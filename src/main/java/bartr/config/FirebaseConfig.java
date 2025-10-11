@@ -11,18 +11,26 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 @Configuration
 @EnableConfigurationProperties(FirebaseProperties.class)
 public class FirebaseConfig {
     private static final Logger log = LoggerFactory.getLogger(FirebaseConfig.class);
+    private final ResourceLoader resourceLoader;
+
+    public FirebaseConfig(ResourceLoader resourceLoader) {
+        this.resourceLoader = resourceLoader;
+    }
 
     @Bean
-    @ConditionalOnProperty(name = "firebase.project-id")
+    @ConditionalOnProperty(name = "firebase.enabled", havingValue = "true")
     public FirebaseApp firebaseApp(FirebaseProperties properties) throws IOException {
         if (!StringUtils.hasText(properties.getProjectId())) {
             throw new IllegalStateException("firebase.project-id property must be provided");
@@ -33,9 +41,11 @@ public class FirebaseConfig {
             log.info("Configured Firebase Auth Emulator at {}", properties.getAuthEmulatorHost());
         }
 
+        GoogleCredentials credentials = loadCredentials(properties);
+
         if (FirebaseApp.getApps().isEmpty()) {
             FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(GoogleCredentials.getApplicationDefault())
+                .setCredentials(credentials)
                 .setProjectId(properties.getProjectId())
                 .build();
             return FirebaseApp.initializeApp(options);
@@ -44,8 +54,24 @@ public class FirebaseConfig {
         return FirebaseApp.getInstance();
     }
 
+    private GoogleCredentials loadCredentials(FirebaseProperties properties) throws IOException {
+        if (StringUtils.hasText(properties.getServiceAccount())) {
+            Resource resource = resourceLoader.getResource(properties.getServiceAccount());
+            if (!resource.exists()) {
+                throw new IllegalStateException("Firebase service account file not found at: " + properties.getServiceAccount());
+            }
+            try (InputStream inputStream = resource.getInputStream()) {
+                log.info("Loading Firebase service account from {}", properties.getServiceAccount());
+                return GoogleCredentials.fromStream(inputStream);
+            }
+        }
+
+        log.info("Firebase service account not configured; falling back to application default credentials.");
+        return GoogleCredentials.getApplicationDefault();
+    }
+
     @Bean
-    @ConditionalOnProperty(name = "firebase.project-id")
+    @ConditionalOnProperty(name = "firebase.enabled", havingValue = "true")
     public FirebaseAuth firebaseAuth(FirebaseApp firebaseApp) {
         return FirebaseAuth.getInstance(firebaseApp);
     }
