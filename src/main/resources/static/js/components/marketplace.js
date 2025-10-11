@@ -1,8 +1,12 @@
+import ApiService from '../services/api.service.js';
+
 class MarketplaceComponent {
     constructor() {
         this.data = {
             listings: []
         };
+        this.currentFilter = 'All';
+        this.searchDebounce = null;
         
         this.init();
     }
@@ -10,7 +14,6 @@ class MarketplaceComponent {
     init() {
         this.handleSearch = this.handleSearch.bind(this);
         this.handleFilterClick = this.handleFilterClick.bind(this);
-        this.currentFilter = 'All';
         this.loadListings();
     }
 
@@ -65,96 +68,88 @@ class MarketplaceComponent {
         `;
     }
 
-    loadListings() {
-        // Mock data - replace with actual API call
-        this.data.listings = [
-            {
-                id: 1,
-                title: "Vintage Camera",
-                description: "Classic 35mm film camera in excellent condition",
-                image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&h=300&fit=crop",
-                location: "Downtown",
-                tradeFor: "Laptop or bicycle",
-                postedDate: "2 days ago",
-                category: "Electronics"
-            },
-            {
-                id: 2,
-                title: "Mountain Bike",
-                description: "21-speed mountain bike, great for trails",
-                image: "https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?w=400&h=300&fit=crop",
-                location: "North Side",
-                tradeFor: "Gaming console",
-                postedDate: "1 week ago",
-                category: "Sports"
-            },
-            {
-                id: 3,
-                title: "Acoustic Guitar",
-                description: "Yamaha acoustic guitar with case and picks",
-                image: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=300&fit=crop",
-                location: "West End",
-                tradeFor: "Keyboard or audio equipment",
-                postedDate: "3 days ago",
-                category: "Electronics"
-            },
-            {
-                id: 4,
-                title: "Designer Handbag",
-                description: "Authentic leather handbag, barely used",
-                image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400&h=300&fit=crop",
-                location: "East Side",
-                tradeFor: "Jewelry or accessories",
-                postedDate: "5 days ago",
-                category: "Clothing"
-            },
-            {
-                id: 5,
-                title: "Coffee Maker",
-                description: "Espresso machine with milk frother",
-                image: "https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=400&h=300&fit=crop",
-                location: "South Bay",
-                tradeFor: "Blender or kitchen appliances",
-                postedDate: "1 day ago",
-                category: "Home"
-            },
-            {
-                id: 6,
-                title: "Book Collection",
-                description: "50+ classic novels and modern fiction",
-                image: "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=400&h=300&fit=crop",
-                location: "Central",
-                tradeFor: "Board games or vinyl records",
-                postedDate: "4 days ago",
-                category: "Home"
-            },
-            {
-                id: 7,
-                title: "Lawn Mowing Service",
-                description: "Professional lawn care and maintenance",
-                image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
-                location: "Citywide",
-                tradeFor: "Handyman services or tools",
-                postedDate: "1 week ago",
-                category: "Services"
-            },
-            {
-                id: 8,
-                title: "Winter Jacket",
-                description: "North Face jacket, size medium, like new",
-                image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=300&fit=crop",
-                location: "Downtown",
-                tradeFor: "Hiking boots or camping gear",
-                postedDate: "2 days ago",
-                category: "Clothing"
+    async loadListings({ category, search } = {}) {
+        const params = new URLSearchParams();
+        const normalizedCategory = this.normalizeCategory(category ?? this.currentFilter);
+        const normalizedSearch = this.normalizeSearchTerm(search ?? this.searchInput?.value ?? '');
+
+        if (normalizedCategory) {
+            params.set('category', normalizedCategory);
+        }
+        if (normalizedSearch) {
+            params.set('search', normalizedSearch);
+        }
+
+        const endpoint = params.toString() ? `/listings?${params.toString()}` : '/listings';
+
+        try {
+            if (this.listingsGrid) {
+                this.listingsGrid.innerHTML = '<div class="loading">Loading listings...</div>';
             }
-        ];
+            const listings = await ApiService.get(endpoint);
+            this.data.listings = listings.map(listing => ({
+                ...listing,
+                postedDate: this.formatDate(listing.postedDate)
+            }));
+            this.renderListings();
+        } catch (error) {
+            console.error('Error loading listings:', error);
+            if (this.listingsGrid) {
+                this.listingsGrid.innerHTML = '<div class="error">Unable to load listings right now.</div>';
+            }
+        }
     }
 
-    renderListings(filteredListings = null) {
-        const listings = filteredListings || this.data.listings;
+    formatDate(dateString) {
+        if (!dateString) {
+            return '';
+        }
+
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) {
+            return dateString;
+        }
+
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - date.getTime());
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         
-        if (listings.length === 0) {
+        if (diffDays === 0) {
+            return "Today";
+        } else if (diffDays === 1) {
+            return "Yesterday";
+        } else if (diffDays < 7) {
+            return `${diffDays} days ago`;
+        } else if (diffDays < 30) {
+            const weeks = Math.floor(diffDays / 7);
+            return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+        } else {
+            return date.toLocaleDateString();
+        }
+    }
+
+    normalizeCategory(category) {
+        if (!category) {
+            return null;
+        }
+        const trimmed = category.trim();
+        return trimmed && trimmed.toLowerCase() !== 'all' ? trimmed : null;
+    }
+
+    normalizeSearchTerm(searchTerm) {
+        if (!searchTerm) {
+            return null;
+        }
+        const trimmed = searchTerm.trim();
+        return trimmed.length > 0 ? trimmed : null;
+    }
+
+    renderListings(listings = this.data.listings) {
+        if (!this.listingsGrid) {
+            return;
+        }
+
+        if (!Array.isArray(listings) || listings.length === 0) {
             this.listingsGrid.innerHTML = '<div class="no-results">No listings found</div>';
             return;
         }
@@ -187,12 +182,20 @@ class MarketplaceComponent {
     }
 
     handleSearch(event) {
-        const searchTerm = event.target.value.toLowerCase();
-        this.applyFilters(searchTerm, this.currentFilter);
+        const searchTerm = event.target.value;
+        if (this.searchDebounce) {
+            clearTimeout(this.searchDebounce);
+        }
+        this.searchDebounce = setTimeout(() => {
+            this.loadListings({
+                category: this.currentFilter,
+                search: searchTerm
+            });
+        }, 300);
     }
 
     handleFilterClick(event) {
-        const category = event.target.textContent;
+        const category = event.target.textContent.trim();
         
         // Update active button
         this.filterButtons.forEach(btn => btn.classList.remove('active'));
@@ -200,31 +203,16 @@ class MarketplaceComponent {
         
         // Update current filter
         this.currentFilter = category;
-        
-        // Apply filters
-        const searchTerm = this.searchInput ? this.searchInput.value.toLowerCase() : '';
-        this.applyFilters(searchTerm, category);
-    }
-
-    applyFilters(searchTerm, category) {
-        let filtered = this.data.listings;
-
-        // Apply category filter
-        if (category !== 'All') {
-            filtered = filtered.filter(listing => listing.category === category);
+        if (this.searchDebounce) {
+            clearTimeout(this.searchDebounce);
+            this.searchDebounce = null;
         }
 
-        // Apply search filter
-        if (searchTerm) {
-            filtered = filtered.filter(listing => 
-                listing.title.toLowerCase().includes(searchTerm) ||
-                listing.description.toLowerCase().includes(searchTerm) ||
-                listing.tradeFor.toLowerCase().includes(searchTerm) ||
-                listing.location.toLowerCase().includes(searchTerm)
-            );
-        }
-
-        this.renderListings(filtered);
+        const searchTerm = this.searchInput ? this.searchInput.value : '';
+        this.loadListings({
+            category,
+            search: searchTerm
+        });
     }
 
     handleListingClick(listingId) {
@@ -313,6 +301,10 @@ class MarketplaceComponent {
             this.filterButtons.forEach(btn => {
                 btn.removeEventListener('click', this.handleFilterClick);
             });
+        }
+        if (this.searchDebounce) {
+            clearTimeout(this.searchDebounce);
+            this.searchDebounce = null;
         }
         console.log('Marketplace component destroyed');
     }
