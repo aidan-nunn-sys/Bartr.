@@ -1,6 +1,3 @@
-import AuthService from '../services/auth.service.js';
-import MessagesService from '../services/messages.service.js';
-
 class ProfileComponent {
     constructor() {
         this.data = {
@@ -9,6 +6,9 @@ class ProfileComponent {
             messages: []
         };
         this.isLoggedIn = false;
+        this.currentListingIndex = 0;
+        this.hasInitializedData = false;
+        this.container = null;
         this.init();
     }
 
@@ -26,16 +26,27 @@ class ProfileComponent {
         this.closeListingPicker = this.closeListingPicker.bind(this);
         this.selectListingOffer = this.selectListingOffer.bind(this);
         this.removeOffer = this.removeOffer.bind(this);
+        this.handleLogin = this.handleLogin.bind(this);
+        this.handleRegister = this.handleRegister.bind(this);
+        this.switchToRegister = this.switchToRegister.bind(this);
+        this.switchToLogin = this.switchToLogin.bind(this);
+        this.handleLogout = this.handleLogout.bind(this);
         this.attachedListing = null;
-        this.hasInitializedData = false;
+    }
+
+    checkLoginStatus() {
+        // Check localStorage for token
+        const token = localStorage.getItem('authToken');
+        this.isLoggedIn = !!token;
+        return this.isLoggedIn;
     }
 
     render() {
-        // Check login status before rendering
         this.checkLoginStatus();
         
         const container = document.createElement('div');
         container.className = 'profile-container';
+        this.container = container;
         
         if (!this.isLoggedIn) {
             container.innerHTML = this.getLoginTemplate();
@@ -48,15 +59,105 @@ class ProfileComponent {
                 this.setupMessageModalListeners();
             }, 0);
 
-        setTimeout(() => {
-            this.loadArtContent();
-        }, 0);
+            setTimeout(() => {
+                this.loadArtContent();
+            }, 0);
 
-        if (!this.hasInitializedData) {
-            this.initializeData();
+            if (!this.hasInitializedData) {
+                this.loadMockData();
+            }
+        }
+        
+        return container;
+    }
+
+    loadMockData() {
+        this.hasInitializedData = true;
+        
+        // Load user data from localStorage or use mock
+        const storedUser = localStorage.getItem('userData');
+        if (storedUser) {
+            this.data.user = JSON.parse(storedUser);
+        } else {
+            this.data.user = {
+                id: 1,
+                name: "John Trader",
+                location: "Downtown",
+                email: "john@bartr.com",
+                joinedDate: "January 2025",
+                bio: "Avid trader and collector. Always looking for vintage electronics and retro games."
+            };
         }
 
-        return container;
+        // Mock listings
+        this.data.listings = [
+            {
+                id: 1,
+                title: "Vintage Camera",
+                description: "Classic 35mm film camera in excellent condition",
+                image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&h=300&fit=crop",
+                category: "Electronics",
+                tradeFor: "Laptop or bicycle",
+                status: "Active"
+            },
+            {
+                id: 2,
+                title: "Acoustic Guitar",
+                description: "Yamaha acoustic guitar with case and picks",
+                image: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=300&fit=crop",
+                category: "Electronics",
+                tradeFor: "Keyboard or audio equipment",
+                status: "Active"
+            }
+        ];
+
+        // Mock messages
+        this.data.messages = [
+            {
+                id: 1,
+                from: "Sarah M.",
+                listing: "Vintage Camera",
+                preview: "Hi! I'm interested in trading my laptop for your camera. Is it still available?",
+                fullMessage: "Hi! I'm interested in trading my laptop for your camera. Is it still available? I have a Dell XPS 13 from 2023.",
+                time: "2 hours ago",
+                unread: true,
+                listingId: 1,
+                counterpartId: 2,
+                counterpartName: "Sarah M.",
+                receiverId: 1
+            },
+            {
+                id: 2,
+                from: "Mike Johnson",
+                listing: "Acoustic Guitar",
+                preview: "I have a Yamaha keyboard I'd be willing to trade. Can we meet up?",
+                fullMessage: "I have a Yamaha keyboard I'd be willing to trade. Can we meet up? It's a PSR-E373 in great condition.",
+                time: "1 day ago",
+                unread: true,
+                listingId: 2,
+                counterpartId: 3,
+                counterpartName: "Mike Johnson",
+                receiverId: 1
+            }
+        ];
+
+        this.updateUserDisplay();
+    }
+
+    updateUserDisplay() {
+        const nameEl = document.querySelector('#display-name');
+        const locationEl = document.querySelector('#display-location');
+        const emailEl = document.querySelector('#display-email');
+        const bioEl = document.querySelector('#display-bio');
+        const joinedEl = document.querySelector('#display-joined');
+        const avatar = document.querySelector('.avatar-placeholder');
+
+        if (nameEl) nameEl.textContent = this.data.user.name || '—';
+        if (locationEl) locationEl.textContent = this.data.user.location || '—';
+        if (emailEl) emailEl.textContent = this.data.user.email || '—';
+        if (bioEl) bioEl.textContent = this.data.user.bio || '—';
+        if (joinedEl) joinedEl.textContent = this.data.user.joinedDate || '—';
+        if (avatar) avatar.textContent = this.getInitials(this.data.user.name);
     }
 
     getLoginTemplate() {
@@ -123,24 +224,19 @@ class ProfileComponent {
     handleLogin(e) {
         e.preventDefault();
         
-        const email = document.querySelector('#login-email').value;
-        const password = document.querySelector('#login-password').value;
+        const email = document.querySelector('#login-email').value.trim();
+        const password = document.querySelector('#login-password').value.trim();
 
         if (!email || !password) {
             alert('Please enter both email and password');
             return;
         }
 
-        // In a real app, validate with server
-        // For demo purposes, accept any credentials
-        console.log('Login attempt:', { email });
-        
-        // Set auth token in memory
-        window.APP_AUTH_TOKEN = 'demo-token-' + Date.now();
+        // Mock login - store token
+        localStorage.setItem('authToken', 'mock-token-' + Date.now());
         this.isLoggedIn = true;
-        this.loadUserData();
+        this.hasInitializedData = false;
         
-        // Re-render to show profile
         const container = document.querySelector('.profile-container');
         if (container && container.parentNode) {
             const newContainer = this.render();
@@ -151,33 +247,31 @@ class ProfileComponent {
     handleRegister(e) {
         e.preventDefault();
         
-        const name = document.querySelector('#register-name').value;
-        const email = document.querySelector('#register-email').value;
-        const location = document.querySelector('#register-location').value;
-        const password = document.querySelector('#register-password').value;
+        const name = document.querySelector('#register-name').value.trim();
+        const email = document.querySelector('#register-email').value.trim();
+        const location = document.querySelector('#register-location').value.trim();
+        const password = document.querySelector('#register-password').value.trim();
 
         if (!name || !email || !location || !password) {
             alert('Please fill in all fields');
             return;
         }
 
-        // In a real app, create account on server
-        console.log('Register attempt:', { name, email, location });
-        
-        // Set auth token and user data
-        window.APP_AUTH_TOKEN = 'demo-token-' + Date.now();
-        this.isLoggedIn = true;
-        this.data.user = {
-            name: name,
-            location: location,
-            email: email,
-            joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-            bio: "New member of the BARTR community!"
+        // Mock register - store user data
+        const userData = {
+            id: Date.now(),
+            name,
+            email,
+            location,
+            bio: '',
+            joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
         };
-        this.data.listings = [];
-        this.data.messages = [];
         
-        // Re-render to show profile
+        localStorage.setItem('userData', JSON.stringify(userData));
+        localStorage.setItem('authToken', 'mock-token-' + Date.now());
+        this.isLoggedIn = true;
+        this.hasInitializedData = false;
+        
         const container = document.querySelector('.profile-container');
         if (container && container.parentNode) {
             const newContainer = this.render();
@@ -198,16 +292,16 @@ class ProfileComponent {
     }
 
     handleLogout() {
-        // Clear auth token
-        window.APP_AUTH_TOKEN = null;
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
         this.isLoggedIn = false;
+        this.hasInitializedData = false;
         this.data = {
             user: {},
             listings: [],
             messages: []
         };
         
-        // Re-render to show login
         const container = document.querySelector('.profile-container');
         if (container && container.parentNode) {
             const newContainer = this.render();
@@ -237,23 +331,23 @@ class ProfileComponent {
                             <div class="user-details">
                                 <div class="detail-row">
                                     <span class="detail-label">Name:</span>
-                                    <span class="detail-value" id="display-name">${user.name}</span>
+                                    <span class="detail-value" id="display-name">${user.name || '—'}</span>
                                 </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Location:</span>
-                                    <span class="detail-value" id="display-location">${user.location}</span>
+                                    <span class="detail-value" id="display-location">${user.location || '—'}</span>
                                 </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Email:</span>
-                                    <span class="detail-value" id="display-email">${user.email}</span>
+                                    <span class="detail-value" id="display-email">${user.email || '—'}</span>
                                 </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Member Since:</span>
-                                    <span class="detail-value" id="display-joined">${user.joinedDate}</span>
+                                    <span class="detail-value" id="display-joined">${user.joinedDate || '—'}</span>
                                 </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Bio:</span>
-                                    <span class="detail-value" id="display-bio">${user.bio}</span>
+                                    <span class="detail-value" id="display-bio">${user.bio || '—'}</span>
                                 </div>
                             </div>
                         </div>
@@ -261,19 +355,19 @@ class ProfileComponent {
                             <div class="edit-form">
                                 <div class="form-group">
                                     <label class="form-label">Name</label>
-                                    <input type="text" class="form-input" id="edit-name" value="${user.name}">
+                                    <input type="text" class="form-input" id="edit-name" value="${user.name || ''}">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Location</label>
-                                    <input type="text" class="form-input" id="edit-location" value="${user.location}">
+                                    <input type="text" class="form-input" id="edit-location" value="${user.location || ''}">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Email</label>
-                                    <input type="email" class="form-input" id="edit-email" value="${user.email}">
+                                    <input type="email" class="form-input" id="edit-email" value="${user.email || ''}">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Bio</label>
-                                    <textarea class="form-textarea" id="edit-bio" rows="4">${user.bio}</textarea>
+                                    <textarea class="form-textarea" id="edit-bio" rows="4">${user.bio || ''}</textarea>
                                 </div>
                                 <div class="form-actions">
                                     <button class="form-btn form-btn-primary" id="save-profile-btn">SAVE</button>
@@ -365,7 +459,7 @@ class ProfileComponent {
 
     getMessageModalTemplate() {
         return `
-            <div class="message-modal" id="message-modal">
+            <div class="message-modal" id="message-modal" style="display: none;">
                 <div class="modal-overlay"></div>
                 <div class="modal-content message-modal-content">
                     <button class="modal-close">&times;</button>
@@ -410,7 +504,7 @@ class ProfileComponent {
                 </div>
             </div>
             
-            <div class="listing-picker-modal" id="listing-picker-modal">
+            <div class="listing-picker-modal" id="listing-picker-modal" style="display: none;">
                 <div class="modal-overlay"></div>
                 <div class="modal-content listing-picker-content">
                     <button class="modal-close">&times;</button>
@@ -424,29 +518,23 @@ class ProfileComponent {
     }
 
     setupEventListeners(container) {
-        // Logout button
         const logoutBtn = container.querySelector('#logout-btn');
         if (logoutBtn) logoutBtn.addEventListener('click', this.handleLogout);
 
-        // Edit profile button
         const editBtn = container.querySelector('#edit-profile-btn');
         if (editBtn) editBtn.addEventListener('click', this.handleEditProfile);
 
-        // Save profile button
         const saveBtn = container.querySelector('#save-profile-btn');
         if (saveBtn) saveBtn.addEventListener('click', this.handleSaveProfile);
 
-        // Cancel edit button
         const cancelBtn = container.querySelector('#cancel-edit-btn');
         if (cancelBtn) cancelBtn.addEventListener('click', this.handleCancelEdit);
 
-        // Carousel navigation
         const prevBtn = container.querySelector('.carousel-prev');
         const nextBtn = container.querySelector('.carousel-next');
         if (prevBtn) prevBtn.addEventListener('click', () => this.navigateCarousel(-1));
         if (nextBtn) nextBtn.addEventListener('click', () => this.navigateCarousel(1));
 
-        // Carousel indicators
         const indicators = container.querySelectorAll('.indicator');
         indicators.forEach(indicator => {
             indicator.addEventListener('click', (e) => {
@@ -455,7 +543,6 @@ class ProfileComponent {
             });
         });
 
-        // Listing actions
         const actionBtns = container.querySelectorAll('.carousel-action-btn');
         actionBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -469,7 +556,6 @@ class ProfileComponent {
             });
         });
 
-        // Add listing button
         const addBtn = container.querySelector('#add-listing-btn');
         if (addBtn) addBtn.addEventListener('click', this.handleAddListing);
 
@@ -510,36 +596,19 @@ class ProfileComponent {
         const pickerCloseBtn = pickerModal.querySelector('.modal-close');
         const pickerOverlay = pickerModal.querySelector('.modal-overlay');
         
-        if (pickerCloseBtn) {
-            pickerCloseBtn.addEventListener('click', () => {
-                console.log('Picker close button clicked');
-                this.closeListingPicker();
-            });
-        }
-        if (pickerOverlay) {
-            pickerOverlay.addEventListener('click', () => {
-                console.log('Picker overlay clicked');
-                this.closeListingPicker();
-            });
-        }
-        
-        console.log('Message modal listeners setup complete');
+        if (pickerCloseBtn) pickerCloseBtn.addEventListener('click', this.closeListingPicker);
+        if (pickerOverlay) pickerOverlay.addEventListener('click', this.closeListingPicker);
     }
 
-    async handleMessageClick(messageId) {
+    handleMessageClick(messageId) {
         const message = this.data.messages.find(m => m.id === messageId);
         if (!message) return;
 
-        if (message.unread && message.receiverId === this.data.user?.id) {
-            try {
-                await MessagesService.markAsRead(message.id);
-                message.unread = false;
-                const messageItem = document.querySelector(`[data-message-id="${messageId}"]`);
-                if (messageItem) {
-                    messageItem.classList.remove('unread');
-                }
-            } catch (error) {
-                console.warn('Failed to mark message as read.', error);
+        if (message.unread) {
+            message.unread = false;
+            const messageItem = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageItem) {
+                messageItem.classList.remove('unread');
             }
         }
 
@@ -587,44 +656,25 @@ class ProfileComponent {
         }, 300);
     }
 
-    async handleSendReply() {
+    handleSendReply() {
         const modal = document.querySelector('#message-modal');
         if (!modal) return;
 
         const replyText = modal.querySelector('#reply-text').value.trim();
-        const messageId = parseInt(modal.dataset.currentMessageId);
-        const listingId = parseInt(modal.dataset.listingId);
-        const counterpartId = parseInt(modal.dataset.counterpartId);
 
         if (!replyText) {
             alert('Please enter a reply message.');
             return;
         }
 
-        if (!listingId || !counterpartId) {
-            alert('Unable to send this reply because the conversation is incomplete.');
-            return;
+        console.log('Reply sent:', replyText);
+        if (this.attachedListing) {
+            console.log('With attached listing:', this.attachedListing.id);
         }
 
-        try {
-            await MessagesService.sendMessage({
-                listingId,
-                receiverId: counterpartId,
-                content: replyText
-            });
-
-            if (this.attachedListing) {
-                console.log('Listing offer attached to message', this.attachedListing.id);
-            }
-
-            alert('Reply sent successfully!');
-            this.attachedListing = null;
-            this.closeMessageModal();
-            await this.loadMessagePreviews();
-        } catch (error) {
-            console.error('Failed to send reply', error);
-            alert('Unable to send your reply right now. Please try again.');
-        }
+        alert('Reply sent successfully!');
+        this.attachedListing = null;
+        this.closeMessageModal();
     }
 
     openListingPicker() {
@@ -679,292 +729,178 @@ class ProfileComponent {
         if (!listing) return;
         
         this.attachedListing = listing;
-        
-        const attachedOffer = document.querySelector('#attached-offer');
-        const attachBtn = document.querySelector('#attach-offer-btn');
-        
-        if (!attachedOffer || !attachBtn) return;
-        
-        attachedOffer.classList.remove('hidden');
-        attachBtn.classList.add('hidden');
-        
-        const imageEl = attachedOffer.querySelector('.attached-offer-image');
-        const titleEl = attachedOffer.querySelector('.attached-offer-title');
-        const tradeEl = attachedOffer.querySelector('.attached-offer-trade');
-        
-        if (imageEl) imageEl.style.backgroundImage = `url('${listing.image}')`;
-        if (titleEl) titleEl.textContent = listing.title;
-        if (tradeEl) tradeEl.textContent = `Trade for: ${listing.tradeFor}`;
-        
-        this.closeListingPicker();
-    }
+    const attachedOffer = document.querySelector('#attached-offer');
+    const attachBtn = document.querySelector('#attach-offer-btn');
+    
+    if (!attachedOffer || !attachBtn) return;
+    
+    attachedOffer.classList.remove('hidden');
+    attachBtn.classList.add('hidden');
+    
+    const imageEl = attachedOffer.querySelector('.attached-offer-image');
+    const titleEl = attachedOffer.querySelector('.attached-offer-title');
+    const tradeEl = attachedOffer.querySelector('.attached-offer-trade');
+    
+    if (imageEl) imageEl.style.backgroundImage = `url('${listing.image}')`;
+    if (titleEl) titleEl.textContent = listing.title;
+    if (tradeEl) tradeEl.textContent = `Trade for: ${listing.tradeFor}`;
+    
+    this.closeListingPicker();
+}
 
-    removeOffer() {
-        this.attachedListing = null;
-        
-        const attachedOffer = document.querySelector('#attached-offer');
-        const attachBtn = document.querySelector('#attach-offer-btn');
-        
-        if (attachedOffer && attachBtn) {
-            attachedOffer.classList.add('hidden');
-            attachBtn.classList.remove('hidden');
-        }
-    }
-
-    handleEditProfile() {
-        this.isEditing = true;
-        const displayInfo = document.querySelector('#user-info');
-        const editInfo = document.querySelector('#user-info-edit');
-        const editBtn = document.querySelector('#edit-profile-btn');
-        
-        if (displayInfo && editInfo && editBtn) {
-            displayInfo.classList.add('hidden');
-            editInfo.classList.remove('hidden');
-            editBtn.style.display = 'none';
-        }
-    }
-
-    handleSaveProfile() {
-        const name = document.querySelector('#edit-name').value;
-        const location = document.querySelector('#edit-location').value;
-        const email = document.querySelector('#edit-email').value;
-        const bio = document.querySelector('#edit-bio').value;
-
-        this.data.user.name = name;
-        this.data.user.location = location;
-        this.data.user.email = email;
-        this.data.user.bio = bio;
-
-        document.querySelector('#display-name').textContent = name;
-        document.querySelector('#display-location').textContent = location;
-        document.querySelector('#display-email').textContent = email;
-        document.querySelector('#display-bio').textContent = bio;
-        
-        const avatar = document.querySelector('.avatar-placeholder');
-        if (avatar) avatar.textContent = this.getInitials(name);
-
-        this.handleCancelEdit();
-
-        console.log('Profile saved:', this.data.user);
-    }
-
-    handleCancelEdit() {
-        this.isEditing = false;
-        const displayInfo = document.querySelector('#user-info');
-        const editInfo = document.querySelector('#user-info-edit');
-        const editBtn = document.querySelector('#edit-profile-btn');
-        
-        if (displayInfo && editInfo && editBtn) {
-            displayInfo.classList.remove('hidden');
-            editInfo.classList.add('hidden');
-            editBtn.style.display = 'block';
-        }
-    }
-
-    navigateCarousel(direction) {
-        const newIndex = this.currentListingIndex + direction;
-        if (newIndex >= 0 && newIndex < this.data.listings.length) {
-            this.currentListingIndex = newIndex;
-            this.updateCarousel(document.querySelector('.profile-container'));
-        }
-    }
-
-    updateCarousel(container) {
-        const carouselContainer = container.querySelector('.listings-carousel');
-        if (carouselContainer) {
-            carouselContainer.innerHTML = this.getCarouselTemplate();
-            this.setupEventListeners(container);
-        }
-    }
-
-    handleListingEdit(id) {
-        console.log('Edit listing:', id);
-        alert('Edit listing functionality - opens modal with edit form');
-    }
-
-    handleListingDelete(id) {
-        if (confirm('Are you sure you want to delete this listing?')) {
-            this.data.listings = this.data.listings.filter(l => l.id !== parseInt(id));
-            if (this.currentListingIndex >= this.data.listings.length) {
-                this.currentListingIndex = Math.max(0, this.data.listings.length - 1);
-            }
-            this.updateCarousel(document.querySelector('.profile-container'));
-            console.log('Listing deleted:', id);
-        }
-    }
-
-    handleAddListing() {
-        console.log('Add new listing');
-        alert('Add listing functionality - opens modal with creation form');
-    }
-
-    getInitials(name) {
-        if (!name) return '??';
-        const names = name.split(' ');
-        if (names.length === 1) return name.substring(0, 2).toUpperCase();
-        return (names[0][0] + names[names.length - 1][0]).toUpperCase();
-    }
-
-    async initializeData() {
-        if (this.hasInitializedData) {
-            return;
-        }
-        this.hasInitializedData = true;
-        await this.loadUserProfile();
-        await this.loadMessagePreviews();
-    }
-
-    async loadUserProfile() {
-        try {
-            const cachedUser = AuthService.getCachedUser();
-            if (cachedUser) {
-                this.data.user = this.normalizeUser(cachedUser);
-            }
-
-            const profile = await AuthService.fetchProfile();
-            if (profile) {
-                this.data.user = this.normalizeUser(profile);
-            }
-        } catch (error) {
-            console.warn('Unable to load user profile.', error);
-            this.data.user = this.data.user || {};
-        }
-
-        this.refreshProfileView();
-    }
-
-    async loadMessagePreviews() {
-        if (!this.data.user || !this.data.user.id) {
-            this.data.messages = [];
-            this.refreshMessagesSection();
-            return;
-        }
-
-        try {
-            const inbox = await MessagesService.fetchInbox();
-            const previews = (inbox || []).slice(0, 5).map(message => {
-                const isReceiver = message.receiverId === this.data.user.id;
-                const counterpartName = isReceiver ? message.senderName : message.receiverName;
-                return {
-                    id: message.id,
-                    listingId: message.listingId,
-                    listingTitle: message.listingTitle,
-                    from: `${message.senderName}`,
-                    listing: message.listingTitle,
-                    preview: message.content,
-                    fullMessage: message.content,
-                    time: this.formatRelativeTime(message.sentAt),
-                    unread: isReceiver && !message.read,
-                    senderId: message.senderId,
-                    receiverId: message.receiverId,
-                    counterpartId: isReceiver ? message.senderId : message.receiverId,
-                    counterpartName
-                };
-            });
-
-            this.data.messages = previews;
-        } catch (error) {
-            console.warn('Unable to load message previews.', error);
-            this.data.messages = [];
-        }
-
-        this.refreshMessagesSection();
-    }
-
-    refreshMessagesSection() {
-        if (!this.container) {
-            return;
-        }
-        const messagesList = this.container.querySelector('.messages-list');
-        if (messagesList) {
-            messagesList.innerHTML = this.getMessagesTemplate();
-            this.bindMessageButtons(this.container);
-        }
-    }
-
-    async loadArtContent() {
-        try {
-            const artModule = await import('/js/components/art/profileArt.js');
-            
-            if (typeof artModule.default === 'function') {
-                artModule.default();
-            }
-        } catch (error) {
-            console.error('Failed to load art.js:', error);
-        }
-    }
-
-    destroy() {
-        console.log('Profile component destroyed');
-    }
-
-    normalizeUser(user) {
-        if (!user) return {};
-        return {
-            ...user,
-            joinedDate: user.joinedDate ? this.formatJoinDate(user.joinedDate) : '—'
-        };
-    }
-
-    formatRelativeTime(dateValue) {
-        if (!dateValue) {
-            return '';
-        }
-        const date = new Date(dateValue);
-        if (Number.isNaN(date.getTime())) {
-            return dateValue;
-        }
-
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMinutes = Math.floor(diffMs / (1000 * 60));
-        const diffHours = Math.floor(diffMinutes / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffMinutes < 1) {
-            return 'Just now';
-        }
-        if (diffMinutes < 60) {
-            return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
-        }
-        if (diffHours < 24) {
-            return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-        }
-        if (diffDays < 7) {
-            return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-        }
-        return date.toLocaleDateString();
-    }
-
-    formatJoinDate(dateValue) {
-        try {
-            const date = new Date(dateValue);
-            if (Number.isNaN(date.getTime())) {
-                return dateValue;
-            }
-            return date.toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'long'
-            });
-        } catch (error) {
-            return dateValue;
-        }
-    }
-
-    refreshProfileView() {
-        if (!this.container) {
-            return;
-        }
-        this.container.innerHTML = this.getTemplate();
-        this.setupEventListeners(this.container);
-        setTimeout(() => {
-            this.setupMessageModalListeners();
-        }, 0);
-        setTimeout(() => {
-            this.loadArtContent();
-        }, 0);
-        this.refreshMessagesSection();
+removeOffer() {
+    this.attachedListing = null;
+    
+    const attachedOffer = document.querySelector('#attached-offer');
+    const attachBtn = document.querySelector('#attach-offer-btn');
+    
+    if (attachedOffer && attachBtn) {
+        attachedOffer.classList.add('hidden');
+        attachBtn.classList.remove('hidden');
     }
 }
 
+handleEditProfile() {
+    const displayInfo = document.querySelector('#user-info');
+    const editInfo = document.querySelector('#user-info-edit');
+    const editBtn = document.querySelector('#edit-profile-btn');
+    
+    if (displayInfo && editInfo && editBtn) {
+        displayInfo.classList.add('hidden');
+        editInfo.classList.remove('hidden');
+        editBtn.style.display = 'none';
+    }
+}
+
+handleSaveProfile() {
+    const name = document.querySelector('#edit-name').value;
+    const location = document.querySelector('#edit-location').value;
+    const email = document.querySelector('#edit-email').value;
+    const bio = document.querySelector('#edit-bio').value;
+
+    this.data.user.name = name;
+    this.data.user.location = location;
+    this.data.user.email = email;
+    this.data.user.bio = bio;
+
+    // Save to localStorage
+    localStorage.setItem('userData', JSON.stringify(this.data.user));
+
+    document.querySelector('#display-name').textContent = name;
+    document.querySelector('#display-location').textContent = location;
+    document.querySelector('#display-email').textContent = email;
+    document.querySelector('#display-bio').textContent = bio;
+    
+    const avatar = document.querySelector('.avatar-placeholder');
+    if (avatar) avatar.textContent = this.getInitials(name);
+
+    this.handleCancelEdit();
+    alert('Profile updated successfully!');
+}
+
+handleCancelEdit() {
+    const displayInfo = document.querySelector('#user-info');
+    const editInfo = document.querySelector('#user-info-edit');
+    const editBtn = document.querySelector('#edit-profile-btn');
+    
+    if (displayInfo && editInfo && editBtn) {
+        displayInfo.classList.remove('hidden');
+        editInfo.classList.add('hidden');
+        editBtn.style.display = 'block';
+    }
+}
+
+navigateCarousel(direction) {
+    const newIndex = this.currentListingIndex + direction;
+    if (newIndex >= 0 && newIndex < this.data.listings.length) {
+        this.currentListingIndex = newIndex;
+        this.updateCarousel(this.container);
+    }
+}
+
+updateCarousel(container) {
+    const carouselContainer = container.querySelector('.listings-carousel');
+    if (carouselContainer) {
+        carouselContainer.innerHTML = this.getCarouselTemplate();
+        
+        // Re-bind carousel event listeners
+        const prevBtn = container.querySelector('.carousel-prev');
+        const nextBtn = container.querySelector('.carousel-next');
+        if (prevBtn) prevBtn.addEventListener('click', () => this.navigateCarousel(-1));
+        if (nextBtn) nextBtn.addEventListener('click', () => this.navigateCarousel(1));
+
+        const indicators = container.querySelectorAll('.indicator');
+        indicators.forEach(indicator => {
+            indicator.addEventListener('click', (e) => {
+                this.currentListingIndex = parseInt(e.target.dataset.index);
+                this.updateCarousel(container);
+            });
+        });
+
+        const actionBtns = container.querySelectorAll('.carousel-action-btn');
+        actionBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.target.dataset.action;
+                const id = e.target.dataset.id;
+                if (action === 'edit') {
+                    this.handleListingEdit(id);
+                } else if (action === 'delete') {
+                    this.handleListingDelete(id);
+                }
+            });
+        });
+    }
+}
+
+handleListingEdit(id) {
+    console.log('Edit listing:', id);
+    alert('Edit listing functionality - opens modal with edit form');
+}
+
+handleListingDelete(id) {
+    if (confirm('Are you sure you want to delete this listing?')) {
+        this.data.listings = this.data.listings.filter(l => l.id !== parseInt(id));
+        if (this.currentListingIndex >= this.data.listings.length) {
+            this.currentListingIndex = Math.max(0, this.data.listings.length - 1);
+        }
+        this.updateCarousel(this.container);
+        
+        // Update section title
+        const sectionTitle = document.querySelector('.section-title');
+        if (sectionTitle && sectionTitle.textContent.includes('MY LISTINGS')) {
+            sectionTitle.textContent = `MY LISTINGS (${this.data.listings.length})`;
+        }
+        
+        console.log('Listing deleted:', id);
+    }
+}
+
+handleAddListing() {
+    console.log('Add new listing');
+    alert('Add listing functionality - opens modal with creation form');
+}
+
+getInitials(name) {
+    if (!name) return '??';
+    const names = name.split(' ');
+    if (names.length === 1) return name.substring(0, 2).toUpperCase();
+    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+}
+
+async loadArtContent() {
+    try {
+        const artModule = await import('/js/components/art/profileArt.js');
+        
+        if (typeof artModule.default === 'function') {
+            artModule.default();
+        }
+    } catch (error) {
+        console.error('Failed to load art.js:', error);
+    }
+}
+
+destroy() {
+    console.log('Profile component destroyed');
+}
+}
 export default ProfileComponent;

@@ -13,14 +13,6 @@ class HomepageComponent {
                 {
                     id: 'messages',
                     name: 'Messages'
-                },
-                {
-                    id: 'login',
-                    name: 'Login'
-                },
-                {
-                    id: 'register',
-                    name: 'Register'
                 }
             ]
         };
