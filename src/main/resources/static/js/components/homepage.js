@@ -9,6 +9,18 @@ class HomepageComponent {
                 {
                     id: 'profile',
                     name: 'Profile'
+                },
+                {
+                    id: 'messages',
+                    name: 'Messages'
+                },
+                {
+                    id: 'login',
+                    name: 'Login'
+                },
+                {
+                    id: 'register',
+                    name: 'Register'
                 }
             ]
         };

@@ -7,6 +7,7 @@ class BartrApp {
             '/': 'homepage',
             '/marketplace': 'marketplace',
             '/profile': 'profile',
+            '/messages': 'messages',
             '/login': 'auth/login',
             '/register': 'auth/register',
         };

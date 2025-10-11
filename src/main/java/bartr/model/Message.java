@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "messages")
+@Table(name = "messages",
+    indexes = {
+        @Index(name = "idx_messages_listing", columnList = "listing_id"),
+        @Index(name = "idx_messages_sender", columnList = "sender_id"),
+        @Index(name = "idx_messages_receiver", columnList = "receiver_id")
+    }
+)
 public class Message {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,15 +31,21 @@ public class Message {
     private LocalDateTime sentDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "listing_id")
+    @JoinColumn(name = "listing_id", nullable = false)
     private Listing listing;
 
     private boolean read;
 
     // Constructors
     public Message() {
-        this.sentDate = LocalDateTime.now();
         this.read = false;
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (this.sentDate == null) {
+            this.sentDate = LocalDateTime.now();
+        }
     }
 
     // Getters and Setters

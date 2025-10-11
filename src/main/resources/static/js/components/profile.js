@@ -1,3 +1,6 @@
+import AuthService from '../services/auth.service.js';
+import MessagesService from '../services/messages.service.js';
+
 class ProfileComponent {
     constructor() {
         this.data = {
@@ -23,30 +26,8 @@ class ProfileComponent {
         this.closeListingPicker = this.closeListingPicker.bind(this);
         this.selectListingOffer = this.selectListingOffer.bind(this);
         this.removeOffer = this.removeOffer.bind(this);
-        this.handleLogin = this.handleLogin.bind(this);
-        this.handleRegister = this.handleRegister.bind(this);
-        this.switchToRegister = this.switchToRegister.bind(this);
-        this.switchToLogin = this.switchToLogin.bind(this);
-        this.handleLogout = this.handleLogout.bind(this);
-        this.currentListingIndex = 0;
-        this.isEditing = false;
         this.attachedListing = null;
-    }
-
-    // Check if user is logged in (check for auth token/session)
-    checkLoginStatus() {
-        // Check for auth token in memory (not localStorage as per restrictions)
-        // In a real app, this would validate with the server
-        const authToken = window.APP_AUTH_TOKEN; // Store token in window object
-        
-        if (authToken) {
-            this.isLoggedIn = true;
-            this.loadUserData();
-        } else {
-            this.isLoggedIn = false;
-        }
-        
-        return this.isLoggedIn;
+        this.hasInitializedData = false;
     }
 
     render() {
@@ -67,11 +48,14 @@ class ProfileComponent {
                 this.setupMessageModalListeners();
             }, 0);
 
-            setTimeout(() => {
-                this.loadArtContent();
-            }, 0);
+        setTimeout(() => {
+            this.loadArtContent();
+        }, 0);
+
+        if (!this.hasInitializedData) {
+            this.initializeData();
         }
-        
+
         return container;
     }
 
@@ -489,11 +473,14 @@ class ProfileComponent {
         const addBtn = container.querySelector('#add-listing-btn');
         if (addBtn) addBtn.addEventListener('click', this.handleAddListing);
 
-        // Message reply buttons
+        this.bindMessageButtons(container);
+    }
+
+    bindMessageButtons(container) {
         const replyBtns = container.querySelectorAll('.message-reply-btn');
         replyBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const messageId = parseInt(e.target.dataset.messageId);
+                const messageId = parseInt(e.currentTarget.dataset.messageId);
                 this.handleMessageClick(messageId);
             });
         });
@@ -523,19 +510,37 @@ class ProfileComponent {
         const pickerCloseBtn = pickerModal.querySelector('.modal-close');
         const pickerOverlay = pickerModal.querySelector('.modal-overlay');
         
-        if (pickerCloseBtn) pickerCloseBtn.addEventListener('click', this.closeListingPicker);
-        if (pickerOverlay) pickerOverlay.addEventListener('click', this.closeListingPicker);
+        if (pickerCloseBtn) {
+            pickerCloseBtn.addEventListener('click', () => {
+                console.log('Picker close button clicked');
+                this.closeListingPicker();
+            });
+        }
+        if (pickerOverlay) {
+            pickerOverlay.addEventListener('click', () => {
+                console.log('Picker overlay clicked');
+                this.closeListingPicker();
+            });
+        }
+        
+        console.log('Message modal listeners setup complete');
     }
 
-    handleMessageClick(messageId) {
+    async handleMessageClick(messageId) {
         const message = this.data.messages.find(m => m.id === messageId);
         if (!message) return;
 
-        message.unread = false;
-        
-        const messageItem = document.querySelector(`[data-message-id="${messageId}"]`);
-        if (messageItem) {
-            messageItem.classList.remove('unread');
+        if (message.unread && message.receiverId === this.data.user?.id) {
+            try {
+                await MessagesService.markAsRead(message.id);
+                message.unread = false;
+                const messageItem = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (messageItem) {
+                    messageItem.classList.remove('unread');
+                }
+            } catch (error) {
+                console.warn('Failed to mark message as read.', error);
+            }
         }
 
         const modal = document.querySelector('#message-modal');
@@ -550,6 +555,9 @@ class ProfileComponent {
         if (replyTextarea) replyTextarea.value = '';
 
         modal.dataset.currentMessageId = messageId;
+        modal.dataset.listingId = message.listingId;
+        modal.dataset.counterpartId = message.counterpartId;
+        modal.dataset.counterpartName = message.counterpartName;
 
         modal.style.display = 'flex';
         setTimeout(() => {
@@ -579,35 +587,44 @@ class ProfileComponent {
         }, 300);
     }
 
-    handleSendReply() {
+    async handleSendReply() {
         const modal = document.querySelector('#message-modal');
         if (!modal) return;
 
         const replyText = modal.querySelector('#reply-text').value.trim();
         const messageId = parseInt(modal.dataset.currentMessageId);
+        const listingId = parseInt(modal.dataset.listingId);
+        const counterpartId = parseInt(modal.dataset.counterpartId);
 
         if (!replyText) {
             alert('Please enter a reply message.');
             return;
         }
 
-        const replyData = {
-            messageId: messageId,
-            text: replyText,
-            attachedListing: this.attachedListing ? {
-                id: this.attachedListing.id,
-                title: this.attachedListing.title
-            } : null
-        };
-        
-        console.log('Sending reply:', replyData);
-        
-        alert(this.attachedListing 
-            ? `Reply sent with offer: "${this.attachedListing.title}"!`
-            : 'Reply sent successfully!');
-        
-        this.attachedListing = null;
-        this.closeMessageModal();
+        if (!listingId || !counterpartId) {
+            alert('Unable to send this reply because the conversation is incomplete.');
+            return;
+        }
+
+        try {
+            await MessagesService.sendMessage({
+                listingId,
+                receiverId: counterpartId,
+                content: replyText
+            });
+
+            if (this.attachedListing) {
+                console.log('Listing offer attached to message', this.attachedListing.id);
+            }
+
+            alert('Reply sent successfully!');
+            this.attachedListing = null;
+            this.closeMessageModal();
+            await this.loadMessagePreviews();
+        } catch (error) {
+            console.error('Failed to send reply', error);
+            alert('Unable to send your reply right now. Please try again.');
+        }
     }
 
     openListingPicker() {
@@ -788,75 +805,81 @@ class ProfileComponent {
         return (names[0][0] + names[names.length - 1][0]).toUpperCase();
     }
 
-    loadUserData() {
-        // Mock data - replace with actual API call
-        this.data.user = {
-            name: "John Trader",
-            location: "Downtown",
-            email: "john@bartr.com",
-            joinedDate: "January 2025",
-            bio: "Avid trader and collector. Always looking for vintage electronics and retro games."
-        };
+    async initializeData() {
+        if (this.hasInitializedData) {
+            return;
+        }
+        this.hasInitializedData = true;
+        await this.loadUserProfile();
+        await this.loadMessagePreviews();
+    }
 
-        this.data.listings = [
-            {
-                id: 1,
-                title: "Vintage Camera",
-                description: "Classic 35mm film camera in excellent condition",
-                image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&h=300&fit=crop",
-                category: "Electronics",
-                tradeFor: "Laptop or bicycle",
-                status: "Active"
-            },
-            {
-                id: 2,
-                title: "Acoustic Guitar",
-                description: "Yamaha acoustic guitar with case and picks",
-                image: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=300&fit=crop",
-                category: "Electronics",
-                tradeFor: "Keyboard or audio equipment",
-                status: "Active"
-            },
-            {
-                id: 3,
-                title: "Book Collection",
-                description: "50+ classic novels and modern fiction",
-                image: "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=400&h=300&fit=crop",
-                category: "Home",
-                tradeFor: "Board games or vinyl records",
-                status: "Pending"
+    async loadUserProfile() {
+        try {
+            const cachedUser = AuthService.getCachedUser();
+            if (cachedUser) {
+                this.data.user = this.normalizeUser(cachedUser);
             }
-        ];
 
-        this.data.messages = [
-            {
-                id: 1,
-                from: "Sarah M.",
-                listing: "Vintage Camera",
-                preview: "Hi! I'm interested in trading my laptop for your camera. Is it still available?",
-                fullMessage: "Hi! I'm interested in trading my laptop for your camera. Is it still available? I have a Dell XPS 15 from 2023 in excellent condition. It has 16GB RAM, 512GB SSD, and an i7 processor. I'm local to the downtown area and could meet up this week if you're interested. Let me know what you think!",
-                time: "2 hours ago",
-                unread: true
-            },
-            {
-                id: 2,
-                from: "Mike Johnson",
-                listing: "Acoustic Guitar",
-                preview: "I have a Yamaha keyboard I'd be willing to trade. Can we meet up?",
-                fullMessage: "I have a Yamaha keyboard I'd be willing to trade. Can we meet up? It's a PSR-E373 model, barely used, with all the original accessories including the stand and power adapter. I've been looking for a good acoustic guitar for a while. Would love to see yours in person. Are you free this weekend?",
-                time: "1 day ago",
-                unread: true
-            },
-            {
-                id: 3,
-                from: "Emma Wilson",
-                listing: "Book Collection",
-                preview: "Thanks for the trade! The books are in great condition.",
-                fullMessage: "Thanks for the trade! The books are in great condition. I really appreciate you being so flexible with the meeting time. The collection is even better than I expected. I'm already halfway through the first novel! If you ever want to trade again in the future, please don't hesitate to reach out. Happy reading!",
-                time: "3 days ago",
-                unread: false
+            const profile = await AuthService.fetchProfile();
+            if (profile) {
+                this.data.user = this.normalizeUser(profile);
             }
-        ];
+        } catch (error) {
+            console.warn('Unable to load user profile.', error);
+            this.data.user = this.data.user || {};
+        }
+
+        this.refreshProfileView();
+    }
+
+    async loadMessagePreviews() {
+        if (!this.data.user || !this.data.user.id) {
+            this.data.messages = [];
+            this.refreshMessagesSection();
+            return;
+        }
+
+        try {
+            const inbox = await MessagesService.fetchInbox();
+            const previews = (inbox || []).slice(0, 5).map(message => {
+                const isReceiver = message.receiverId === this.data.user.id;
+                const counterpartName = isReceiver ? message.senderName : message.receiverName;
+                return {
+                    id: message.id,
+                    listingId: message.listingId,
+                    listingTitle: message.listingTitle,
+                    from: `${message.senderName}`,
+                    listing: message.listingTitle,
+                    preview: message.content,
+                    fullMessage: message.content,
+                    time: this.formatRelativeTime(message.sentAt),
+                    unread: isReceiver && !message.read,
+                    senderId: message.senderId,
+                    receiverId: message.receiverId,
+                    counterpartId: isReceiver ? message.senderId : message.receiverId,
+                    counterpartName
+                };
+            });
+
+            this.data.messages = previews;
+        } catch (error) {
+            console.warn('Unable to load message previews.', error);
+            this.data.messages = [];
+        }
+
+        this.refreshMessagesSection();
+    }
+
+    refreshMessagesSection() {
+        if (!this.container) {
+            return;
+        }
+        const messagesList = this.container.querySelector('.messages-list');
+        if (messagesList) {
+            messagesList.innerHTML = this.getMessagesTemplate();
+            this.bindMessageButtons(this.container);
+        }
     }
 
     async loadArtContent() {
@@ -873,6 +896,74 @@ class ProfileComponent {
 
     destroy() {
         console.log('Profile component destroyed');
+    }
+
+    normalizeUser(user) {
+        if (!user) return {};
+        return {
+            ...user,
+            joinedDate: user.joinedDate ? this.formatJoinDate(user.joinedDate) : '—'
+        };
+    }
+
+    formatRelativeTime(dateValue) {
+        if (!dateValue) {
+            return '';
+        }
+        const date = new Date(dateValue);
+        if (Number.isNaN(date.getTime())) {
+            return dateValue;
+        }
+
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMinutes / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffMinutes < 1) {
+            return 'Just now';
+        }
+        if (diffMinutes < 60) {
+            return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+        }
+        if (diffHours < 24) {
+            return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+        }
+        if (diffDays < 7) {
+            return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+        }
+        return date.toLocaleDateString();
+    }
+
+    formatJoinDate(dateValue) {
+        try {
+            const date = new Date(dateValue);
+            if (Number.isNaN(date.getTime())) {
+                return dateValue;
+            }
+            return date.toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'long'
+            });
+        } catch (error) {
+            return dateValue;
+        }
+    }
+
+    refreshProfileView() {
+        if (!this.container) {
+            return;
+        }
+        this.container.innerHTML = this.getTemplate();
+        this.setupEventListeners(this.container);
+        setTimeout(() => {
+            this.setupMessageModalListeners();
+        }, 0);
+        setTimeout(() => {
+            this.loadArtContent();
+        }, 0);
+        this.refreshMessagesSection();
     }
 }
 

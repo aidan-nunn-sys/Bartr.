@@ -4,10 +4,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "firebase")
 public class FirebaseProperties {
+    private boolean enabled;
     private String projectId;
     private String apiKey;
+    private String serviceAccount = "classpath:firebase/bartr-firebase-adminsdk.json";
     private boolean authEmulatorEnabled;
     private String authEmulatorHost = "localhost:9099";
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     public String getProjectId() {
         return projectId;
@@ -23,6 +33,14 @@ public class FirebaseProperties {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public String getServiceAccount() {
+        return serviceAccount;
+    }
+
+    public void setServiceAccount(String serviceAccount) {
+        this.serviceAccount = serviceAccount;
     }
 
     public boolean isAuthEmulatorEnabled() {
