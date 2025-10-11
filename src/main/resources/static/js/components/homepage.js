@@ -11,6 +11,10 @@ class HomepageComponent {
                     name: 'Profile'
                 },
                 {
+                    id: 'messages',
+                    name: 'Messages'
+                },
+                {
                     id: 'login',
                     name: 'Login'
                 },

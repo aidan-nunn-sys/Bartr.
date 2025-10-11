@@ -1,4 +1,6 @@
 import ApiService from '../services/api.service.js';
+import AuthService from '../services/auth.service.js';
+import MessagesService from '../services/messages.service.js';
 
 class MarketplaceComponent {
     constructor() {
@@ -515,7 +517,7 @@ class MarketplaceComponent {
         }
     }
 
-    handleSendMessage(listing, closeCallback) {
+    async handleSendMessage(listing, closeCallback) {
         const messageText = document.querySelector('#contact-message').value.trim();
 
         if (!messageText) {
@@ -523,25 +525,64 @@ class MarketplaceComponent {
             return;
         }
 
-        // In a real app, this would send the message to the server
-        const messageData = {
-            listingId: listing.id,
-            listingTitle: listing.title,
-            text: messageText,
-            attachedListing: this.attachedListing ? {
-                id: this.attachedListing.id,
-                title: this.attachedListing.title
-            } : null
-        };
-        
-        console.log('Sending message:', messageData);
-        
-        alert(this.attachedListing 
-            ? `Message sent with offer: "${this.attachedListing.title}"!`
-            : 'Message sent successfully!');
-        
-        this.attachedListing = null;
-        closeCallback();
+        const currentUser = AuthService.getCachedUser();
+        if (!currentUser) {
+            alert('Please sign in to contact the trader.');
+            if (window.bartrApp) {
+                window.bartrApp.navigateTo('/login');
+            }
+            return;
+        }
+
+        try {
+            const listingDetails = await this.getListingDetails(listing.id);
+            if (!listingDetails || !listingDetails.owner || !listingDetails.owner.id) {
+                alert('Unable to determine the listing owner.');
+                return;
+            }
+
+            if (listingDetails.owner.id === currentUser.id) {
+                alert('This listing already belongs to you.');
+                return;
+            }
+
+            await MessagesService.sendMessage({
+                listingId: listingDetails.id,
+                receiverId: listingDetails.owner.id,
+                content: messageText
+            });
+
+            if (this.attachedListing) {
+                console.log('Listing offer attached to message', this.attachedListing.id);
+            }
+
+            alert('Message sent successfully!');
+            this.attachedListing = null;
+            closeCallback();
+
+            if (window.bartrApp) {
+                window.bartrApp.navigateTo('/messages');
+            }
+        } catch (error) {
+            console.error('Failed to send message', error);
+            alert('Unable to send your message right now. Please try again.');
+        }
+    }
+
+    async getListingDetails(listingId) {
+        if (this.data && Array.isArray(this.data.listings)) {
+            const local = this.data.listings.find(item => Number(item.id) === Number(listingId));
+            if (local && local.owner && local.owner.id) {
+                return local;
+            }
+        }
+
+        try {
+            return await ApiService.get(`/listings/${listingId}`);
+        } catch (error) {
+            console.error('Unable to fetch listing details', error);
+            return null;
+        }
     }
 
     async loadArtContent() {

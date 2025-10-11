@@ -7,7 +7,7 @@ public class FirebaseProperties {
     private boolean enabled;
     private String projectId;
     private String apiKey;
-    private String serviceAccount;
+    private String serviceAccount = "classpath:firebase/bartr-firebase-adminsdk.json";
     private boolean authEmulatorEnabled;
     private String authEmulatorHost = "localhost:9099";
 
