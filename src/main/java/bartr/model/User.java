@@ -23,8 +23,17 @@ public class User {
     private String location;
     private String bio;
 
+    @Column(nullable = false, unique = true)
+    private String firebaseUid;
+
     @Column(nullable = false)
     private LocalDateTime joinedDate;
+
+    private String phoneNumber;
+
+    private String profileImageUrl;
+
+    private String passwordHash;
 
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
     @JsonIgnore
@@ -76,12 +85,44 @@ public class User {
         this.bio = bio;
     }
 
+    public String getFirebaseUid() {
+        return firebaseUid;
+    }
+
+    public void setFirebaseUid(String firebaseUid) {
+        this.firebaseUid = firebaseUid;
+    }
+
     public LocalDateTime getJoinedDate() {
         return joinedDate;
     }
 
     public void setJoinedDate(LocalDateTime joinedDate) {
         this.joinedDate = joinedDate;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public List<Listing> getListings() {

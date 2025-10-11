@@ -7,6 +7,8 @@ class BartrApp {
             '/': 'homepage',
             '/marketplace': 'marketplace',
             '/profile': 'profile',
+            '/login': 'auth/login',
+            '/register': 'auth/register',
         };
         
         this.init();

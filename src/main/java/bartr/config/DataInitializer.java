@@ -30,21 +30,27 @@ public class DataInitializer implements CommandLineRunner {
             "Alex Johnson",
             "alex@example.com",
             "Downtown",
-            "Gadget enthusiast looking for creative trades."
+            "Gadget enthusiast looking for creative trades.",
+            "sample-alex-uid",
+            "+11234567890"
         );
 
         User maya = createUser(
             "Maya Lee",
             "maya@example.com",
             "Midtown",
-            "Designer with a love for sustainable fashion."
+            "Designer with a love for sustainable fashion.",
+            "sample-maya-uid",
+            "+11234567891"
         );
 
         User jordan = createUser(
             "Jordan Smith",
             "jordan@example.com",
             "West End",
-            "Home barista and weekend handyman."
+            "Home barista and weekend handyman.",
+            "sample-jordan-uid",
+            "+11234567892"
         );
 
         userRepository.saveAll(List.of(alex, maya, jordan));
@@ -105,12 +111,21 @@ public class DataInitializer implements CommandLineRunner {
         listingRepository.saveAll(listings);
     }
 
-    private User createUser(String name, String email, String location, String bio) {
+    private User createUser(
+        String name,
+        String email,
+        String location,
+        String bio,
+        String firebaseUid,
+        String phoneNumber
+    ) {
         User user = new User();
         user.setName(name);
         user.setEmail(email);
         user.setLocation(location);
         user.setBio(bio);
+        user.setFirebaseUid(firebaseUid);
+        user.setPhoneNumber(phoneNumber);
         return user;
     }
 
