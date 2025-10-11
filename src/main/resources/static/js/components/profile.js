@@ -16,8 +16,16 @@ class ProfileComponent {
         this.handleListingEdit = this.handleListingEdit.bind(this);
         this.handleListingDelete = this.handleListingDelete.bind(this);
         this.handleAddListing = this.handleAddListing.bind(this);
+        this.handleMessageClick = this.handleMessageClick.bind(this);
+        this.closeMessageModal = this.closeMessageModal.bind(this);
+        this.handleSendReply = this.handleSendReply.bind(this);
+        this.openListingPicker = this.openListingPicker.bind(this);
+        this.closeListingPicker = this.closeListingPicker.bind(this);
+        this.selectListingOffer = this.selectListingOffer.bind(this);
+        this.removeOffer = this.removeOffer.bind(this);
         this.currentListingIndex = 0;
         this.isEditing = false;
+        this.attachedListing = null;
         this.loadUserData();
     }
 
@@ -27,6 +35,11 @@ class ProfileComponent {
         container.innerHTML = this.getTemplate();
 
         this.setupEventListeners(container);
+        
+        // Setup modal listeners after DOM is ready
+        setTimeout(() => {
+            this.setupMessageModalListeners();
+        }, 0);
 
         setTimeout(() => {
             this.loadArtContent();
@@ -124,6 +137,7 @@ class ProfileComponent {
                     </div>
                 </div>
             </div>
+            ${this.getMessageModalTemplate()}
         `;
     }
 
@@ -169,16 +183,76 @@ class ProfileComponent {
         }
 
         return this.data.messages.map(msg => `
-            <div class="message-item ${msg.unread ? 'unread' : ''}">
+            <div class="message-item ${msg.unread ? 'unread' : ''}" data-message-id="${msg.id}">
                 <div class="message-header">
                     <span class="message-from">${msg.from}</span>
                     <span class="message-time">${msg.time}</span>
                 </div>
                 <div class="message-subject">RE: ${msg.listing}</div>
                 <div class="message-preview">${msg.preview}</div>
-                <button class="message-reply-btn">REPLY</button>
+                <button class="message-reply-btn" data-message-id="${msg.id}">VIEW & REPLY</button>
             </div>
         `).join('');
+    }
+
+    getMessageModalTemplate() {
+        return `
+            <div class="message-modal" id="message-modal">
+                <div class="modal-overlay"></div>
+                <div class="modal-content message-modal-content">
+                    <button class="modal-close">&times;</button>
+                    <div class="message-modal-body">
+                        <div class="message-modal-header">
+                            <h2 class="message-modal-title">MESSAGE</h2>
+                            <div class="message-modal-meta">
+                                <span class="message-modal-from"></span>
+                                <span class="message-modal-time"></span>
+                            </div>
+                            <div class="message-modal-subject"></div>
+                        </div>
+                        <div class="message-modal-content-area">
+                            <p class="message-modal-text"></p>
+                        </div>
+                        <div class="message-modal-reply">
+                            <h3 class="reply-title">YOUR REPLY</h3>
+                            <textarea class="reply-textarea" id="reply-text" rows="6" placeholder="Type your reply here..."></textarea>
+                            
+                            <div class="offer-section">
+                                <button class="attach-offer-btn" id="attach-offer-btn">
+                                    <span class="attach-icon">📎</span> ATTACH LISTING AS OFFER
+                                </button>
+                                <div class="attached-offer hidden" id="attached-offer">
+                                    <div class="attached-offer-content">
+                                        <div class="attached-offer-image"></div>
+                                        <div class="attached-offer-info">
+                                            <div class="attached-offer-title"></div>
+                                            <div class="attached-offer-trade"></div>
+                                        </div>
+                                        <button class="remove-offer-btn" id="remove-offer-btn">&times;</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="reply-actions">
+                                <button class="modal-btn modal-btn-primary" id="send-reply-btn">SEND REPLY</button>
+                                <button class="modal-btn" id="close-message-modal-btn">CLOSE</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="listing-picker-modal" id="listing-picker-modal">
+                <div class="modal-overlay"></div>
+                <div class="modal-content listing-picker-content">
+                    <button class="modal-close">&times;</button>
+                    <div class="listing-picker-body">
+                        <h2 class="listing-picker-title">SELECT A LISTING TO OFFER</h2>
+                        <div class="listing-picker-grid" id="listing-picker-grid"></div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     setupEventListeners(container) {
@@ -230,10 +304,269 @@ class ProfileComponent {
         // Message reply buttons
         const replyBtns = container.querySelectorAll('.message-reply-btn');
         replyBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                alert('Reply functionality coming soon!');
+            btn.addEventListener('click', (e) => {
+                const messageId = parseInt(e.target.dataset.messageId);
+                this.handleMessageClick(messageId);
             });
         });
+    }
+
+    setupMessageModalListeners() {
+        const modal = document.querySelector('#message-modal');
+        if (!modal) {
+            console.error('Message modal not found');
+            return;
+        }
+
+        const closeBtn = modal.querySelector('.modal-close');
+        const overlay = modal.querySelector('.modal-overlay');
+        const closeModalBtn = modal.querySelector('#close-message-modal-btn');
+        const sendReplyBtn = modal.querySelector('#send-reply-btn');
+        const attachOfferBtn = modal.querySelector('#attach-offer-btn');
+        const removeOfferBtn = modal.querySelector('#remove-offer-btn');
+
+        if (closeBtn) closeBtn.addEventListener('click', this.closeMessageModal);
+        if (overlay) overlay.addEventListener('click', this.closeMessageModal);
+        if (closeModalBtn) closeModalBtn.addEventListener('click', this.closeMessageModal);
+        if (sendReplyBtn) sendReplyBtn.addEventListener('click', this.handleSendReply);
+        
+        if (attachOfferBtn) {
+            attachOfferBtn.addEventListener('click', () => {
+                console.log('Attach offer button clicked');
+                this.openListingPicker();
+            });
+        } else {
+            console.error('Attach offer button not found');
+        }
+        
+        if (removeOfferBtn) {
+            removeOfferBtn.addEventListener('click', this.removeOffer);
+        }
+        
+        // Setup listing picker modal listeners
+        const pickerModal = document.querySelector('#listing-picker-modal');
+        if (!pickerModal) {
+            console.error('Listing picker modal not found in DOM');
+            return;
+        }
+        
+        const pickerCloseBtn = pickerModal.querySelector('.modal-close');
+        const pickerOverlay = pickerModal.querySelector('.modal-overlay');
+        
+        if (pickerCloseBtn) {
+            pickerCloseBtn.addEventListener('click', () => {
+                console.log('Picker close button clicked');
+                this.closeListingPicker();
+            });
+        }
+        if (pickerOverlay) {
+            pickerOverlay.addEventListener('click', () => {
+                console.log('Picker overlay clicked');
+                this.closeListingPicker();
+            });
+        }
+        
+        console.log('Message modal listeners setup complete');
+    }
+
+    handleMessageClick(messageId) {
+        const message = this.data.messages.find(m => m.id === messageId);
+        if (!message) return;
+
+        // Mark message as read
+        message.unread = false;
+        
+        // Update the message item in the list
+        const messageItem = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageItem) {
+            messageItem.classList.remove('unread');
+        }
+
+        // Populate modal with message data
+        const modal = document.querySelector('#message-modal');
+        if (!modal) return;
+
+        modal.querySelector('.message-modal-from').textContent = `From: ${message.from}`;
+        modal.querySelector('.message-modal-time').textContent = message.time;
+        modal.querySelector('.message-modal-subject').textContent = `RE: ${message.listing}`;
+        modal.querySelector('.message-modal-text').textContent = message.fullMessage || message.preview;
+        
+        // Clear reply textarea
+        const replyTextarea = modal.querySelector('#reply-text');
+        if (replyTextarea) replyTextarea.value = '';
+
+        // Store current message ID
+        modal.dataset.currentMessageId = messageId;
+
+        // Show modal with animation
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('modal-open');
+        }, 10);
+    }
+
+    closeMessageModal() {
+        const modal = document.querySelector('#message-modal');
+        if (!modal) return;
+
+        modal.classList.add('modal-closing');
+        modal.classList.remove('modal-open');
+
+        setTimeout(() => {
+            modal.style.display = 'none';
+            modal.classList.remove('modal-closing');
+            
+            // Reset attached listing
+            this.attachedListing = null;
+            const attachedOffer = document.querySelector('#attached-offer');
+            const attachBtn = document.querySelector('#attach-offer-btn');
+            
+            if (attachedOffer && attachBtn) {
+                attachedOffer.classList.add('hidden');
+                attachBtn.classList.remove('hidden');
+            }
+        }, 300);
+    }
+
+    handleSendReply() {
+        const modal = document.querySelector('#message-modal');
+        if (!modal) return;
+
+        const replyText = modal.querySelector('#reply-text').value.trim();
+        const messageId = parseInt(modal.dataset.currentMessageId);
+
+        if (!replyText) {
+            alert('Please enter a reply message.');
+            return;
+        }
+
+        // In a real app, this would send the reply to the server
+        const replyData = {
+            messageId: messageId,
+            text: replyText,
+            attachedListing: this.attachedListing ? {
+                id: this.attachedListing.id,
+                title: this.attachedListing.title
+            } : null
+        };
+        
+        console.log('Sending reply:', replyData);
+        
+        alert(this.attachedListing 
+            ? `Reply sent with offer: "${this.attachedListing.title}"!`
+            : 'Reply sent successfully!');
+        
+        this.attachedListing = null;
+        this.closeMessageModal();
+    }
+
+    openListingPicker() {
+        const pickerModal = document.querySelector('#listing-picker-modal');
+        if (!pickerModal) {
+            console.error('Listing picker modal not found');
+            return;
+        }
+        
+        // Render listings in picker
+        const grid = pickerModal.querySelector('#listing-picker-grid');
+        if (!grid) {
+            console.error('Listing picker grid not found');
+            return;
+        }
+        
+        if (this.data.listings.length === 0) {
+            grid.innerHTML = '<div class="no-listings-picker">No listings available. Create a listing first!</div>';
+        } else {
+            grid.innerHTML = this.data.listings.map(listing => `
+                <div class="listing-picker-item" data-listing-id="${listing.id}">
+                    <div class="listing-picker-image" style="background-image: url('${listing.image}')"></div>
+                    <div class="listing-picker-info">
+                        <div class="listing-picker-title">${listing.title}</div>
+                        <div class="listing-picker-trade">Trade for: ${listing.tradeFor}</div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Add click handlers
+            grid.querySelectorAll('.listing-picker-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const listingId = parseInt(item.dataset.listingId);
+                    this.selectListingOffer(listingId);
+                });
+            });
+        }
+        
+        // Show modal
+        pickerModal.style.display = 'flex';
+        setTimeout(() => {
+            pickerModal.classList.add('modal-open');
+        }, 10);
+    }
+
+    closeListingPicker() {
+        const pickerModal = document.querySelector('#listing-picker-modal');
+        if (!pickerModal) return;
+
+        pickerModal.classList.add('modal-closing');
+        pickerModal.classList.remove('modal-open');
+
+        setTimeout(() => {
+            pickerModal.style.display = 'none';
+            pickerModal.classList.remove('modal-closing');
+        }, 300);
+    }
+
+    selectListingOffer(listingId) {
+        console.log('Selecting listing offer:', listingId);
+        const listing = this.data.listings.find(l => l.id === listingId);
+        if (!listing) {
+            console.error('Listing not found:', listingId);
+            return;
+        }
+        
+        console.log('Found listing:', listing);
+        this.attachedListing = listing;
+        
+        // Update UI to show attached listing
+        const attachedOffer = document.querySelector('#attached-offer');
+        const attachBtn = document.querySelector('#attach-offer-btn');
+        
+        if (!attachedOffer) {
+            console.error('Attached offer element not found');
+            return;
+        }
+        
+        if (!attachBtn) {
+            console.error('Attach button not found');
+            return;
+        }
+        
+        console.log('Updating UI with attached listing');
+        attachedOffer.classList.remove('hidden');
+        attachBtn.classList.add('hidden');
+        
+        const imageEl = attachedOffer.querySelector('.attached-offer-image');
+        const titleEl = attachedOffer.querySelector('.attached-offer-title');
+        const tradeEl = attachedOffer.querySelector('.attached-offer-trade');
+        
+        if (imageEl) imageEl.style.backgroundImage = `url('${listing.image}')`;
+        if (titleEl) titleEl.textContent = listing.title;
+        if (tradeEl) tradeEl.textContent = `Trade for: ${listing.tradeFor}`;
+        
+        console.log('UI updated, closing picker');
+        this.closeListingPicker();
+    }
+
+    removeOffer() {
+        this.attachedListing = null;
+        
+        const attachedOffer = document.querySelector('#attached-offer');
+        const attachBtn = document.querySelector('#attach-offer-btn');
+        
+        if (attachedOffer && attachBtn) {
+            attachedOffer.classList.add('hidden');
+            attachBtn.classList.remove('hidden');
+        }
     }
 
     handleEditProfile() {
@@ -381,6 +714,7 @@ class ProfileComponent {
                 from: "Sarah M.",
                 listing: "Vintage Camera",
                 preview: "Hi! I'm interested in trading my laptop for your camera. Is it still available?",
+                fullMessage: "Hi! I'm interested in trading my laptop for your camera. Is it still available? I have a Dell XPS 15 from 2023 in excellent condition. It has 16GB RAM, 512GB SSD, and an i7 processor. I'm local to the downtown area and could meet up this week if you're interested. Let me know what you think!",
                 time: "2 hours ago",
                 unread: true
             },
@@ -389,6 +723,7 @@ class ProfileComponent {
                 from: "Mike Johnson",
                 listing: "Acoustic Guitar",
                 preview: "I have a Yamaha keyboard I'd be willing to trade. Can we meet up?",
+                fullMessage: "I have a Yamaha keyboard I'd be willing to trade. Can we meet up? It's a PSR-E373 model, barely used, with all the original accessories including the stand and power adapter. I've been looking for a good acoustic guitar for a while. Would love to see yours in person. Are you free this weekend?",
                 time: "1 day ago",
                 unread: true
             },
@@ -397,6 +732,7 @@ class ProfileComponent {
                 from: "Emma Wilson",
                 listing: "Book Collection",
                 preview: "Thanks for the trade! The books are in great condition.",
+                fullMessage: "Thanks for the trade! The books are in great condition. I really appreciate you being so flexible with the meeting time. The collection is even better than I expected. I'm already halfway through the first novel! If you ever want to trade again in the future, please don't hesitate to reach out. Happy reading!",
                 time: "3 days ago",
                 unread: false
             }

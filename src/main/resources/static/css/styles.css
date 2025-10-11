@@ -600,6 +600,11 @@ body {
     color: white;
 }
 
+.modal-btn-secondary:hover {
+    background: white;
+    color: black;
+}
+
 /* Scrollbar for modal */
 .modal-content::-webkit-scrollbar {
     width: 8px;
@@ -1040,6 +1045,7 @@ body {
     padding: 15px;
     background: transparent;
     transition: all 0.3s;
+    cursor: pointer;
 }
 
 .message-item.unread {
@@ -1098,6 +1104,7 @@ body {
     font-size: 11px;
     letter-spacing: 1px;
     transition: all 0.3s;
+    text-transform: uppercase;
 }
 
 .message-reply-btn:hover {
@@ -1144,5 +1151,591 @@ body {
         width: 40px;
         height: 40px;
         font-size: 20px;
+    }
+}
+
+/* Message Modal Styles */
+.message-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.message-modal.modal-open {
+    opacity: 1;
+}
+
+.message-modal.modal-closing {
+    opacity: 0;
+}
+
+.message-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+}
+
+.message-modal-content {
+    position: relative;
+    background: #1a1a1a;
+    border: 2px solid white;
+    max-width: 800px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    z-index: 1001;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.message-modal.modal-open .message-modal-content {
+    transform: scale(1);
+}
+
+.message-modal .modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: transparent;
+    border: 2px solid white;
+    color: white;
+    font-size: 32px;
+    width: 45px;
+    height: 45px;
+    cursor: pointer;
+    z-index: 1002;
+    transition: all 0.3s;
+    font-family: Arial, sans-serif;
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.message-modal .modal-close:hover {
+    background: white;
+    color: black;
+}
+
+.message-modal-body {
+    padding: 30px;
+    padding-top: 50px;
+}
+
+.message-modal-header {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.message-modal-title {
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: white;
+    margin: 0 0 15px 0;
+    text-transform: uppercase;
+}
+
+.message-modal-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.message-modal-from {
+    font-weight: bold;
+    color: white;
+    text-transform: uppercase;
+}
+
+.message-modal-time {
+    text-transform: uppercase;
+}
+
+.message-modal-subject {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.message-modal-content-area {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 20px;
+    margin-bottom: 30px;
+    min-height: 150px;
+}
+
+.message-modal-text {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: white;
+    line-height: 1.8;
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.message-modal-reply {
+    border-top: 2px solid rgba(255, 255, 255, 0.3);
+    padding-top: 25px;
+}
+
+.reply-title {
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: white;
+    margin: 0 0 15px 0;
+    text-transform: uppercase;
+}
+
+.reply-textarea {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid white;
+    background: transparent;
+    color: white;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: vertical;
+    margin-bottom: 20px;
+}
+
+.reply-textarea:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.reply-textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.reply-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.reply-actions .modal-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: 2px solid white;
+    background: transparent;
+    color: white;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+}
+
+.reply-actions .modal-btn:hover {
+    background: white;
+    color: black;
+}
+
+.reply-actions .modal-btn-primary {
+    background: white;
+    color: black;
+}
+
+.reply-actions .modal-btn-primary:hover {
+    background: transparent;
+    color: white;
+}
+
+/* Scrollbar styling for message modal */
+.message-modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.message-modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.message-modal-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px solid white;
+}
+
+.message-modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Offer Attachment Styles */
+.offer-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.attach-offer-btn {
+    width: 100%;
+    padding: 12px 20px;
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.attach-offer-btn:hover {
+    border-color: white;
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.attach-icon {
+    font-size: 16px;
+}
+
+.attached-offer {
+    width: 100%;
+}
+
+.attached-offer.hidden {
+    display: none;
+}
+
+.attached-offer-content {
+    display: grid;
+    grid-template-columns: 100px 1fr 40px;
+    gap: 15px;
+    padding: 12px;
+    border: 2px solid white;
+    background: rgba(255, 255, 255, 0.05);
+    align-items: center;
+}
+
+.attached-offer-image {
+    width: 100px;
+    height: 80px;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid white;
+}
+
+.attached-offer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.attached-offer-title {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.attached-offer-trade {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.remove-offer-btn {
+    width: 40px;
+    height: 40px;
+    border: 2px solid white;
+    background: transparent;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+    line-height: 1;
+    padding: 0;
+}
+
+.remove-offer-btn:hover {
+    background: #ff0000;
+    border-color: #ff0000;
+}
+
+/* Listing Picker Modal Styles */
+.listing-picker-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.listing-picker-modal.modal-open {
+    opacity: 1;
+}
+
+.listing-picker-modal.modal-closing {
+    opacity: 0;
+}
+
+.listing-picker-content {
+    position: relative;
+    background: #1a1a1a;
+    border: 2px solid white;
+    max-width: 900px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    z-index: 1101;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.listing-picker-modal.modal-open .listing-picker-content {
+    transform: scale(1);
+}
+
+.listing-picker-body {
+    padding: 30px;
+    padding-top: 50px;
+}
+
+.listing-picker-title {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: white;
+    margin: 0 0 25px 0;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.listing-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.listing-picker-item {
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s;
+    overflow: hidden;
+}
+
+.listing-picker-item:hover {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
+}
+
+.listing-picker-image {
+    width: 100%;
+    height: 150px;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.listing-picker-item:hover .listing-picker-image {
+    border-bottom-color: white;
+}
+
+.listing-picker-info {
+    padding: 15px;
+}
+
+.listing-picker-item .listing-picker-title {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: white;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    font-weight: bold;
+    text-align: left;
+}
+
+.listing-picker-trade {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.no-listings-picker {
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    grid-column: 1 / -1;
+}
+
+/* Contact Modal Styles */
+.contact-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.contact-modal.modal-open {
+    opacity: 1;
+}
+
+.contact-modal.modal-closing {
+    opacity: 0;
+}
+
+.contact-modal-listing {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 15px;
+    padding: 15px;
+    margin-top: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+    align-items: center;
+}
+
+.contact-listing-image {
+    width: 80px;
+    height: 60px;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid white;
+}
+
+.contact-listing-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.contact-listing-title {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.contact-listing-location {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Mobile Responsive for Modals */
+@media (max-width: 768px) {
+    .message-modal-content {
+        max-width: 95%;
+        max-height: 90vh;
+    }
+
+    .message-modal-body {
+        padding: 20px;
+        padding-top: 45px;
+    }
+
+    .message-modal-title {
+        font-size: 16px;
+    }
+
+    .message-modal-meta {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .message-modal-content-area {
+        padding: 15px;
+    }
+
+    .reply-textarea {
+        font-size: 12px;
+        padding: 12px;
+    }
+
+    .reply-actions {
+        flex-direction: column;
+    }
+
+    .message-modal .modal-close {
+        width: 40px;
+        height: 40px;
+        font-size: 28px;
+        top: 10px;
+        right: 10px;
+    }
+    
+    .listing-picker-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .attached-offer-content {
+        grid-template-columns: 80px 1fr 35px;
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .attached-offer-image {
+        width: 80px;
+        height: 65px;
+    }
+    
+    .remove-offer-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 20px;
+    }
+    
+    .contact-modal-listing {
+        grid-template-columns: 70px 1fr;
+        gap: 12px;
+        padding: 12px;
+    }
+    
+    .contact-listing-image {
+        width: 70px;
+        height: 55px;
     }
 }
