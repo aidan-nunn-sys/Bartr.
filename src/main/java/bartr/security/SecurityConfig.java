@@ -24,14 +24,19 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/password-reset", "/api/auth/logout").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/listings/**").permitAll()
-                .requestMatchers("/", "/index.html", "/js/**", "/css/**", "/assets/**").permitAll()
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .anyRequest().authenticated()
+                // Auth endpoints - public
+                .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
+                
+                // API endpoints that need authentication
+                .requestMatchers("/api/profile/**", "/api/messages/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/listings/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/listings/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/listings/**").authenticated()
+                
+                // Everything else is public (HTML pages, static files, GET listings, etc.)
+                .anyRequest().permitAll()
             )
             .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
-
 }

@@ -1,16 +1,15 @@
-import AuthService from '../services/auth.service.js';
-
 class ProfileComponent {
     constructor() {
-        this.container = null;
         this.data = {
             user: {},
             listings: [],
             messages: []
         };
-        this.currentListingIndex = 0;
-        this.isEditing = false;
+        this.isLoggedIn = false;
+        this.init();
+    }
 
+    init() {
         this.handleEditProfile = this.handleEditProfile.bind(this);
         this.handleSaveProfile = this.handleSaveProfile.bind(this);
         this.handleCancelEdit = this.handleCancelEdit.bind(this);
@@ -24,65 +23,224 @@ class ProfileComponent {
         this.closeListingPicker = this.closeListingPicker.bind(this);
         this.selectListingOffer = this.selectListingOffer.bind(this);
         this.removeOffer = this.removeOffer.bind(this);
+        this.handleLogin = this.handleLogin.bind(this);
+        this.handleRegister = this.handleRegister.bind(this);
+        this.switchToRegister = this.switchToRegister.bind(this);
+        this.switchToLogin = this.switchToLogin.bind(this);
+        this.handleLogout = this.handleLogout.bind(this);
         this.currentListingIndex = 0;
         this.isEditing = false;
         this.attachedListing = null;
-        this.loadUserData();
+    }
+
+    // Check if user is logged in (check for auth token/session)
+    checkLoginStatus() {
+        // Check for auth token in memory (not localStorage as per restrictions)
+        // In a real app, this would validate with the server
+        const authToken = window.APP_AUTH_TOKEN; // Store token in window object
+        
+        if (authToken) {
+            this.isLoggedIn = true;
+            this.loadUserData();
+        } else {
+            this.isLoggedIn = false;
+        }
+        
+        return this.isLoggedIn;
     }
 
     render() {
+        // Check login status before rendering
+        this.checkLoginStatus();
+        
         const container = document.createElement('div');
         container.className = 'profile-container';
-        this.container = container;
-        container.innerHTML = this.getTemplate();
-
-        this.setupEventListeners(container);
         
-        // Setup modal listeners after DOM is ready
-        setTimeout(() => {
-            this.setupMessageModalListeners();
-        }, 0);
+        if (!this.isLoggedIn) {
+            container.innerHTML = this.getLoginTemplate();
+            this.setupLoginListeners(container);
+        } else {
+            container.innerHTML = this.getTemplate();
+            this.setupEventListeners(container);
+            
+            setTimeout(() => {
+                this.setupMessageModalListeners();
+            }, 0);
 
-        setTimeout(() => {
-            this.loadArtContent();
-        }, 0);
-
+            setTimeout(() => {
+                this.loadArtContent();
+            }, 0);
+        }
+        
         return container;
+    }
+
+    getLoginTemplate() {
+        return `
+            <div class="auth-wrapper">
+                <a href="/" class="back-button">&lt;</a>
+                <div class="auth-container">
+                    <h1 class="auth-title">BARTR</h1>
+                    <div class="auth-form" id="login-form">
+                        <h2 class="auth-form-title">LOGIN</h2>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" id="login-email" placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-input" id="login-password" placeholder="••••••••">
+                        </div>
+                        <button class="auth-btn" id="login-btn">LOGIN</button>
+                        <p class="auth-switch">
+                            Don't have an account? <a href="#" id="switch-to-register">Register</a>
+                        </p>
+                    </div>
+                    <div class="auth-form hidden" id="register-form">
+                        <h2 class="auth-form-title">REGISTER</h2>
+                        <div class="form-group">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-input" id="register-name" placeholder="John Doe">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" id="register-email" placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-input" id="register-location" placeholder="City, State">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-input" id="register-password" placeholder="••••••••">
+                        </div>
+                        <button class="auth-btn" id="register-btn">REGISTER</button>
+                        <p class="auth-switch">
+                            Already have an account? <a href="#" id="switch-to-login">Login</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    setupLoginListeners(container) {
+        const loginBtn = container.querySelector('#login-btn');
+        const registerBtn = container.querySelector('#register-btn');
+        const switchToRegister = container.querySelector('#switch-to-register');
+        const switchToLogin = container.querySelector('#switch-to-login');
+
+        if (loginBtn) loginBtn.addEventListener('click', this.handleLogin);
+        if (registerBtn) registerBtn.addEventListener('click', this.handleRegister);
+        if (switchToRegister) switchToRegister.addEventListener('click', this.switchToRegister);
+        if (switchToLogin) switchToLogin.addEventListener('click', this.switchToLogin);
+    }
+
+    handleLogin(e) {
+        e.preventDefault();
+        
+        const email = document.querySelector('#login-email').value;
+        const password = document.querySelector('#login-password').value;
+
+        if (!email || !password) {
+            alert('Please enter both email and password');
+            return;
+        }
+
+        // In a real app, validate with server
+        // For demo purposes, accept any credentials
+        console.log('Login attempt:', { email });
+        
+        // Set auth token in memory
+        window.APP_AUTH_TOKEN = 'demo-token-' + Date.now();
+        this.isLoggedIn = true;
+        this.loadUserData();
+        
+        // Re-render to show profile
+        const container = document.querySelector('.profile-container');
+        if (container && container.parentNode) {
+            const newContainer = this.render();
+            container.parentNode.replaceChild(newContainer, container);
+        }
+    }
+
+    handleRegister(e) {
+        e.preventDefault();
+        
+        const name = document.querySelector('#register-name').value;
+        const email = document.querySelector('#register-email').value;
+        const location = document.querySelector('#register-location').value;
+        const password = document.querySelector('#register-password').value;
+
+        if (!name || !email || !location || !password) {
+            alert('Please fill in all fields');
+            return;
+        }
+
+        // In a real app, create account on server
+        console.log('Register attempt:', { name, email, location });
+        
+        // Set auth token and user data
+        window.APP_AUTH_TOKEN = 'demo-token-' + Date.now();
+        this.isLoggedIn = true;
+        this.data.user = {
+            name: name,
+            location: location,
+            email: email,
+            joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+            bio: "New member of the BARTR community!"
+        };
+        this.data.listings = [];
+        this.data.messages = [];
+        
+        // Re-render to show profile
+        const container = document.querySelector('.profile-container');
+        if (container && container.parentNode) {
+            const newContainer = this.render();
+            container.parentNode.replaceChild(newContainer, container);
+        }
+    }
+
+    switchToRegister(e) {
+        e.preventDefault();
+        document.querySelector('#login-form').classList.add('hidden');
+        document.querySelector('#register-form').classList.remove('hidden');
+    }
+
+    switchToLogin(e) {
+        e.preventDefault();
+        document.querySelector('#register-form').classList.add('hidden');
+        document.querySelector('#login-form').classList.remove('hidden');
+    }
+
+    handleLogout() {
+        // Clear auth token
+        window.APP_AUTH_TOKEN = null;
+        this.isLoggedIn = false;
+        this.data = {
+            user: {},
+            listings: [],
+            messages: []
+        };
+        
+        // Re-render to show login
+        const container = document.querySelector('.profile-container');
+        if (container && container.parentNode) {
+            const newContainer = this.render();
+            container.parentNode.replaceChild(newContainer, container);
+        }
     }
 
     getTemplate() {
         const user = this.data.user;
-
-        if (!user || !user.firebaseUid) {
-            return `
-                <div class="profile-wrapper">
-                    <a href="/" class="back-button">&lt;</a>
-                    <div id="profile-title-container"></div>
-                    <div class="profile-content">
-                        <div class="profile-section">
-                            <div class="section-header">
-                                <h2 class="section-title">ACCOUNT</h2>
-                            </div>
-                            <div class="no-results">
-                                <p>Sign in to manage your profile, listings, and trades.</p>
-                                <div style="margin-top: 16px;">
-                                    <a data-route="/login" class="link-button">Sign in</a>
-                                    <span style="margin: 0 8px; color: #666;">or</span>
-                                    <a data-route="/register" class="link-button">Create account</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
         return `
             <div class="profile-wrapper">
                 <a href="/" class="back-button">&lt;</a>
                 <div id="profile-title-container"></div>
+                <button class="logout-btn" id="logout-btn">LOGOUT</button>
                 
                 <div class="profile-content">
+                    <!-- User Info Section -->
                     <div class="profile-section">
                         <div class="section-header">
                             <h2 class="section-title">USER PROFILE</h2>
@@ -93,21 +251,46 @@ class ProfileComponent {
                                 <div class="avatar-placeholder">${this.getInitials(user.name)}</div>
                             </div>
                             <div class="user-details">
-                                ${this.renderDetailRow('Name', user.name, 'display-name')}
-                                ${this.renderDetailRow('Location', user.location, 'display-location')}
-                                ${this.renderDetailRow('Email', user.email, 'display-email')}
-                                ${this.renderDetailRow('Phone', user.phoneNumber || '—', 'display-phone')}
-                                ${this.renderDetailRow('Member Since', user.joinedDate, 'display-joined')}
-                                ${this.renderDetailRow('Bio', user.bio || 'Add a bio to share more about you.', 'display-bio')}
+                                <div class="detail-row">
+                                    <span class="detail-label">Name:</span>
+                                    <span class="detail-value" id="display-name">${user.name}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Location:</span>
+                                    <span class="detail-value" id="display-location">${user.location}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Email:</span>
+                                    <span class="detail-value" id="display-email">${user.email}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Member Since:</span>
+                                    <span class="detail-value" id="display-joined">${user.joinedDate}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Bio:</span>
+                                    <span class="detail-value" id="display-bio">${user.bio}</span>
+                                </div>
                             </div>
                         </div>
                         <div class="user-info-edit hidden" id="user-info-edit">
                             <div class="edit-form">
-                                ${this.renderInput('Name', 'text', 'edit-name', user.name)}
-                                ${this.renderInput('Location', 'text', 'edit-location', user.location || '')}
-                                ${this.renderInput('Email', 'email', 'edit-email', user.email, true)}
-                                ${this.renderInput('Phone', 'tel', 'edit-phone', user.phoneNumber || '')}
-                                ${this.renderTextarea('Bio', 'edit-bio', user.bio || '')}
+                                <div class="form-group">
+                                    <label class="form-label">Name</label>
+                                    <input type="text" class="form-input" id="edit-name" value="${user.name}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Location</label>
+                                    <input type="text" class="form-input" id="edit-location" value="${user.location}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-input" id="edit-email" value="${user.email}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Bio</label>
+                                    <textarea class="form-textarea" id="edit-bio" rows="4">${user.bio}</textarea>
+                                </div>
                                 <div class="form-actions">
                                     <button class="form-btn form-btn-primary" id="save-profile-btn">SAVE</button>
                                     <button class="form-btn form-btn-secondary" id="cancel-edit-btn">CANCEL</button>
@@ -116,6 +299,7 @@ class ProfileComponent {
                         </div>
                     </div>
 
+                    <!-- Listings Carousel Section -->
                     <div class="profile-section">
                         <div class="section-header">
                             <h2 class="section-title">MY LISTINGS (${this.data.listings.length})</h2>
@@ -126,6 +310,7 @@ class ProfileComponent {
                         </div>
                     </div>
 
+                    <!-- Messages Section -->
                     <div class="profile-section">
                         <div class="section-header">
                             <h2 class="section-title">MESSAGES (${this.data.messages.length})</h2>
@@ -142,7 +327,7 @@ class ProfileComponent {
 
     getCarouselTemplate() {
         if (this.data.listings.length === 0) return '';
-
+        
         const listing = this.data.listings[this.currentListingIndex];
         return `
             <div class="carousel-container">
@@ -154,7 +339,7 @@ class ProfileComponent {
                         <p class="carousel-description">${listing.description}</p>
                         <div class="carousel-meta">
                             <span class="carousel-category">${listing.category}</span>
-                            <span class="carousel-status">${listing.status || 'Active'}</span>
+                            <span class="carousel-status">${listing.status}</span>
                         </div>
                         <div class="carousel-trade">
                             <span class="trade-label">Trade for:</span>
@@ -255,6 +440,10 @@ class ProfileComponent {
     }
 
     setupEventListeners(container) {
+        // Logout button
+        const logoutBtn = container.querySelector('#logout-btn');
+        if (logoutBtn) logoutBtn.addEventListener('click', this.handleLogout);
+
         // Edit profile button
         const editBtn = container.querySelector('#edit-profile-btn');
         if (editBtn) editBtn.addEventListener('click', this.handleEditProfile);
@@ -312,10 +501,7 @@ class ProfileComponent {
 
     setupMessageModalListeners() {
         const modal = document.querySelector('#message-modal');
-        if (!modal) {
-            console.error('Message modal not found');
-            return;
-        }
+        if (!modal) return;
 
         const closeBtn = modal.querySelector('.modal-close');
         const overlay = modal.querySelector('.modal-overlay');
@@ -328,60 +514,30 @@ class ProfileComponent {
         if (overlay) overlay.addEventListener('click', this.closeMessageModal);
         if (closeModalBtn) closeModalBtn.addEventListener('click', this.closeMessageModal);
         if (sendReplyBtn) sendReplyBtn.addEventListener('click', this.handleSendReply);
+        if (attachOfferBtn) attachOfferBtn.addEventListener('click', this.openListingPicker);
+        if (removeOfferBtn) removeOfferBtn.addEventListener('click', this.removeOffer);
         
-        if (attachOfferBtn) {
-            attachOfferBtn.addEventListener('click', () => {
-                console.log('Attach offer button clicked');
-                this.openListingPicker();
-            });
-        } else {
-            console.error('Attach offer button not found');
-        }
-        
-        if (removeOfferBtn) {
-            removeOfferBtn.addEventListener('click', this.removeOffer);
-        }
-        
-        // Setup listing picker modal listeners
         const pickerModal = document.querySelector('#listing-picker-modal');
-        if (!pickerModal) {
-            console.error('Listing picker modal not found in DOM');
-            return;
-        }
+        if (!pickerModal) return;
         
         const pickerCloseBtn = pickerModal.querySelector('.modal-close');
         const pickerOverlay = pickerModal.querySelector('.modal-overlay');
         
-        if (pickerCloseBtn) {
-            pickerCloseBtn.addEventListener('click', () => {
-                console.log('Picker close button clicked');
-                this.closeListingPicker();
-            });
-        }
-        if (pickerOverlay) {
-            pickerOverlay.addEventListener('click', () => {
-                console.log('Picker overlay clicked');
-                this.closeListingPicker();
-            });
-        }
-        
-        console.log('Message modal listeners setup complete');
+        if (pickerCloseBtn) pickerCloseBtn.addEventListener('click', this.closeListingPicker);
+        if (pickerOverlay) pickerOverlay.addEventListener('click', this.closeListingPicker);
     }
 
     handleMessageClick(messageId) {
         const message = this.data.messages.find(m => m.id === messageId);
         if (!message) return;
 
-        // Mark message as read
         message.unread = false;
         
-        // Update the message item in the list
         const messageItem = document.querySelector(`[data-message-id="${messageId}"]`);
         if (messageItem) {
             messageItem.classList.remove('unread');
         }
 
-        // Populate modal with message data
         const modal = document.querySelector('#message-modal');
         if (!modal) return;
 
@@ -390,14 +546,11 @@ class ProfileComponent {
         modal.querySelector('.message-modal-subject').textContent = `RE: ${message.listing}`;
         modal.querySelector('.message-modal-text').textContent = message.fullMessage || message.preview;
         
-        // Clear reply textarea
         const replyTextarea = modal.querySelector('#reply-text');
         if (replyTextarea) replyTextarea.value = '';
 
-        // Store current message ID
         modal.dataset.currentMessageId = messageId;
 
-        // Show modal with animation
         modal.style.display = 'flex';
         setTimeout(() => {
             modal.classList.add('modal-open');
@@ -415,7 +568,6 @@ class ProfileComponent {
             modal.style.display = 'none';
             modal.classList.remove('modal-closing');
             
-            // Reset attached listing
             this.attachedListing = null;
             const attachedOffer = document.querySelector('#attached-offer');
             const attachBtn = document.querySelector('#attach-offer-btn');
@@ -439,7 +591,6 @@ class ProfileComponent {
             return;
         }
 
-        // In a real app, this would send the reply to the server
         const replyData = {
             messageId: messageId,
             text: replyText,
@@ -461,17 +612,10 @@ class ProfileComponent {
 
     openListingPicker() {
         const pickerModal = document.querySelector('#listing-picker-modal');
-        if (!pickerModal) {
-            console.error('Listing picker modal not found');
-            return;
-        }
+        if (!pickerModal) return;
         
-        // Render listings in picker
         const grid = pickerModal.querySelector('#listing-picker-grid');
-        if (!grid) {
-            console.error('Listing picker grid not found');
-            return;
-        }
+        if (!grid) return;
         
         if (this.data.listings.length === 0) {
             grid.innerHTML = '<div class="no-listings-picker">No listings available. Create a listing first!</div>';
@@ -486,7 +630,6 @@ class ProfileComponent {
                 </div>
             `).join('');
             
-            // Add click handlers
             grid.querySelectorAll('.listing-picker-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const listingId = parseInt(item.dataset.listingId);
@@ -495,7 +638,6 @@ class ProfileComponent {
             });
         }
         
-        // Show modal
         pickerModal.style.display = 'flex';
         setTimeout(() => {
             pickerModal.classList.add('modal-open');
@@ -516,31 +658,16 @@ class ProfileComponent {
     }
 
     selectListingOffer(listingId) {
-        console.log('Selecting listing offer:', listingId);
         const listing = this.data.listings.find(l => l.id === listingId);
-        if (!listing) {
-            console.error('Listing not found:', listingId);
-            return;
-        }
+        if (!listing) return;
         
-        console.log('Found listing:', listing);
         this.attachedListing = listing;
         
-        // Update UI to show attached listing
         const attachedOffer = document.querySelector('#attached-offer');
         const attachBtn = document.querySelector('#attach-offer-btn');
         
-        if (!attachedOffer) {
-            console.error('Attached offer element not found');
-            return;
-        }
+        if (!attachedOffer || !attachBtn) return;
         
-        if (!attachBtn) {
-            console.error('Attach button not found');
-            return;
-        }
-        
-        console.log('Updating UI with attached listing');
         attachedOffer.classList.remove('hidden');
         attachBtn.classList.add('hidden');
         
@@ -552,7 +679,6 @@ class ProfileComponent {
         if (titleEl) titleEl.textContent = listing.title;
         if (tradeEl) tradeEl.textContent = `Trade for: ${listing.tradeFor}`;
         
-        console.log('UI updated, closing picker');
         this.closeListingPicker();
     }
 
@@ -570,11 +696,10 @@ class ProfileComponent {
 
     handleEditProfile() {
         this.isEditing = true;
-        if (!this.container) return;
-        const displayInfo = this.container.querySelector('#user-info');
-        const editInfo = this.container.querySelector('#user-info-edit');
-        const editBtn = this.container.querySelector('#edit-profile-btn');
-
+        const displayInfo = document.querySelector('#user-info');
+        const editInfo = document.querySelector('#user-info-edit');
+        const editBtn = document.querySelector('#edit-profile-btn');
+        
         if (displayInfo && editInfo && editBtn) {
             displayInfo.classList.add('hidden');
             editInfo.classList.remove('hidden');
@@ -582,36 +707,36 @@ class ProfileComponent {
         }
     }
 
-    async handleSaveProfile() {
-        if (!this.container) return;
-        const name = this.container.querySelector('#edit-name').value.trim();
-        const location = this.container.querySelector('#edit-location').value.trim();
-        const bio = this.container.querySelector('#edit-bio').value.trim();
-        const phoneNumber = this.container.querySelector('#edit-phone').value.trim();
+    handleSaveProfile() {
+        const name = document.querySelector('#edit-name').value;
+        const location = document.querySelector('#edit-location').value;
+        const email = document.querySelector('#edit-email').value;
+        const bio = document.querySelector('#edit-bio').value;
 
-        try {
-            const updated = await AuthService.updateProfile({
-                name,
-                location,
-                bio,
-                phoneNumber
-            });
-            this.data.user = this.normalizeUser(updated);
-            this.handleCancelEdit();
-            this.refreshProfileView();
-        } catch (error) {
-            console.error('Failed to update profile:', error);
-            alert('Unable to save your profile. Please try again.');
-        }
+        this.data.user.name = name;
+        this.data.user.location = location;
+        this.data.user.email = email;
+        this.data.user.bio = bio;
+
+        document.querySelector('#display-name').textContent = name;
+        document.querySelector('#display-location').textContent = location;
+        document.querySelector('#display-email').textContent = email;
+        document.querySelector('#display-bio').textContent = bio;
+        
+        const avatar = document.querySelector('.avatar-placeholder');
+        if (avatar) avatar.textContent = this.getInitials(name);
+
+        this.handleCancelEdit();
+
+        console.log('Profile saved:', this.data.user);
     }
 
     handleCancelEdit() {
         this.isEditing = false;
-        if (!this.container) return;
-        const displayInfo = this.container.querySelector('#user-info');
-        const editInfo = this.container.querySelector('#user-info-edit');
-        const editBtn = this.container.querySelector('#edit-profile-btn');
-
+        const displayInfo = document.querySelector('#user-info');
+        const editInfo = document.querySelector('#user-info-edit');
+        const editBtn = document.querySelector('#edit-profile-btn');
+        
         if (displayInfo && editInfo && editBtn) {
             displayInfo.classList.remove('hidden');
             editInfo.classList.add('hidden');
@@ -623,12 +748,11 @@ class ProfileComponent {
         const newIndex = this.currentListingIndex + direction;
         if (newIndex >= 0 && newIndex < this.data.listings.length) {
             this.currentListingIndex = newIndex;
-            this.updateCarousel(this.container);
+            this.updateCarousel(document.querySelector('.profile-container'));
         }
     }
 
     updateCarousel(container) {
-        if (!container) return;
         const carouselContainer = container.querySelector('.listings-carousel');
         if (carouselContainer) {
             carouselContainer.innerHTML = this.getCarouselTemplate();
@@ -643,17 +767,18 @@ class ProfileComponent {
 
     handleListingDelete(id) {
         if (confirm('Are you sure you want to delete this listing?')) {
-            this.data.listings = this.data.listings.filter(l => l.id !== parseInt(id, 10));
+            this.data.listings = this.data.listings.filter(l => l.id !== parseInt(id));
             if (this.currentListingIndex >= this.data.listings.length) {
                 this.currentListingIndex = Math.max(0, this.data.listings.length - 1);
             }
-            this.updateCarousel(this.container);
+            this.updateCarousel(document.querySelector('.profile-container'));
             console.log('Listing deleted:', id);
         }
     }
 
     handleAddListing() {
-        alert('Add listing functionality coming soon.');
+        console.log('Add new listing');
+        alert('Add listing functionality - opens modal with creation form');
     }
 
     getInitials(name) {
@@ -737,7 +862,7 @@ class ProfileComponent {
     async loadArtContent() {
         try {
             const artModule = await import('/js/components/art/profileArt.js');
-
+            
             if (typeof artModule.default === 'function') {
                 artModule.default();
             }
@@ -747,41 +872,7 @@ class ProfileComponent {
     }
 
     destroy() {
-        if (this.container) {
-            this.container.innerHTML = '';
-        }
         console.log('Profile component destroyed');
-    }
-
-    normalizeUser(user) {
-        if (!user) return {};
-        return {
-            ...user,
-            joinedDate: user.joinedDate ? this.formatJoinDate(user.joinedDate) : '—'
-        };
-    }
-
-    formatJoinDate(dateValue) {
-        try {
-            const date = new Date(dateValue);
-            if (Number.isNaN(date.getTime())) {
-                return dateValue;
-            }
-            return date.toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'long'
-            });
-        } catch (error) {
-            return dateValue;
-        }
-    }
-
-    refreshProfileView() {
-        if (!this.container) {
-            return;
-        }
-        this.container.innerHTML = this.getTemplate();
-        this.setupEventListeners(this.container);
     }
 }
 

@@ -1154,6 +1154,56 @@ body {
     }
 }
 
+/* Auth Section Styles */
+.auth-section {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.auth-switch {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.auth-switch-text {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 10px;
+}
+
+.auth-switch-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: all 0.3s;
+    padding: 0;
+}
+
+.auth-switch-btn:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.form-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
 /* Message Modal Styles */
 .message-modal {
     position: fixed;

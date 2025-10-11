@@ -9,14 +9,6 @@ class HomepageComponent {
                 {
                     id: 'profile',
                     name: 'Profile'
-                },
-                {
-                    id: 'login',
-                    name: 'Login'
-                },
-                {
-                    id: 'register',
-                    name: 'Register'
                 }
             ]
         };
