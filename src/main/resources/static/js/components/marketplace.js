@@ -8,6 +8,7 @@ class MarketplaceComponent {
         };
         this.currentFilter = 'All';
         this.searchDebounce = null;
+        this.attachedListing = null;
         
         this.init();
     }
@@ -15,6 +16,11 @@ class MarketplaceComponent {
     init() {
         this.handleSearch = this.handleSearch.bind(this);
         this.handleFilterClick = this.handleFilterClick.bind(this);
+        this.openListingPicker = this.openListingPicker.bind(this);
+        this.closeListingPicker = this.closeListingPicker.bind(this);
+        this.selectListingOffer = this.selectListingOffer.bind(this);
+        this.removeOffer = this.removeOffer.bind(this);
+        this.handleSendMessage = this.handleSendMessage.bind(this);
         this.loadListings();
         this.loadUserListings();
     }
@@ -99,6 +105,19 @@ class MarketplaceComponent {
             if (this.listingsGrid) {
                 this.listingsGrid.innerHTML = '<div class="error">Unable to load listings right now.</div>';
             }
+        }
+    }
+
+    async loadUserListings() {
+        try {
+            // Load user's own listings for offering
+            const userListings = await ApiService.get('/user/listings');
+            this.data.userListings = userListings.map(listing => ({
+                ...listing,
+                postedDate: this.formatDate(listing.postedDate)
+            }));
+        } catch (error) {
+            console.error('Error loading user listings:', error);
         }
     }
 
