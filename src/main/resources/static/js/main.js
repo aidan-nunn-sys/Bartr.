@@ -28,6 +28,15 @@ class BartrApp {
                 const route = e.target.getAttribute('data-route');
                 this.navigateTo(route);
             }
+            
+            // Also handle regular anchor tags with href
+            if (e.target.matches('a[href]') && !e.target.matches('[data-route]')) {
+                const href = e.target.getAttribute('href');
+                if (href.startsWith('/') && !href.startsWith('//')) {
+                    e.preventDefault();
+                    this.navigateTo(href);
+                }
+            }
         });
     }
 
@@ -45,6 +54,11 @@ class BartrApp {
     }
 
     navigateTo(path) {
+        // Ensure path starts with /
+        if (!path.startsWith('/')) {
+            path = '/' + path;
+        }
+        
         window.history.pushState({}, '', path);
         this.handleRoute();
     }
@@ -54,10 +68,7 @@ class BartrApp {
             link.classList.remove('active');
         });
         
-        let activeRoute = '';
-        activeRoute = activePath.substring(1);
-        
-        const activeLink = document.querySelector(`[data-route="${activeRoute}"]`);
+        const activeLink = document.querySelector(`[data-route="${activePath}"]`);
         if (activeLink) {
             activeLink.classList.add('active');
         }
@@ -65,7 +76,6 @@ class BartrApp {
 
     async loadAndRenderComponent(componentName) {
         try {
-            
             const componentClass = await this.loadComponent(componentName);
             if (componentClass) {
                 this.loadedComponents.set(componentName, componentClass);
@@ -117,10 +127,10 @@ class BartrApp {
         const pageContent = document.getElementById('page-content');
         if (pageContent) {
             pageContent.innerHTML = `
-                <div style="padding: 20px; color: red; text-align: center;">
-                    <h2>Error</h2>
+                <div style="padding: 20px; color: white; text-align: center; font-family: 'Courier New', monospace;">
+                    <h2 style="text-transform: uppercase; letter-spacing: 2px;">Error</h2>
                     <p>${message}</p>
-                    <button onclick="window.location.reload()">Reload Page</button>
+                    <button style="padding: 10px 20px; border: 2px solid white; background: transparent; color: white; cursor: pointer; font-family: 'Courier New', monospace; margin-top: 20px;" onclick="window.location.reload()">RELOAD PAGE</button>
                 </div>
             `;
         }
